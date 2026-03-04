@@ -60,7 +60,6 @@ ihsan-platform/
 │   │   └── constants.js
 │   └── app.js
 ├── .env
-├── .env.example
 ├── package.json
 ├── database/
 │   └── migrations/
