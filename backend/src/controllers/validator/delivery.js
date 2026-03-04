@@ -252,3 +252,18 @@ export const getValidatorStats = async (req, res) => {
     res.status(500).json({ error: 'Erreur chargement stats' });
   }
 };
+
+const io = req.app.get('io');
+
+io.emit('new-transaction', {
+  id: transaction.id,
+  amount: transaction.amount,
+  need_title: need.title,
+  location_quarter: need.location_quarter,
+  confirmed_at: transaction.confirmed_at,
+  proof_image: impactProof?.thumbnail_url,
+  blockchain_url: transaction.blockchain_explorer_url
+});
+
+const stats = await getGlobalStats();
+io.emit('stats-updated', stats);
