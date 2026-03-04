@@ -1,56 +1,136 @@
-# IHSAN Platform - API Reference
+# 📖 IHSAN Platform - API Reference v1.0
 
-Base URL: `https://your-api-url.onrender.com/api/v1`
+This document provides a comprehensive guide to the IHSAN Platform Backend API. Designed for the frontend team and external integrators.
 
-## 🔐 Authentication
-Most routes require a JWT token in the header: `Authorization: Bearer <token>`
+## 🔗 Base URL
+- **Local**: `http://localhost:3000/api/v1`
+- **Production**: `https://ihsan-backend.onrender.com/api/v1`
+
+## 🔐 Authentication & Security
+
+### JWT Authentication
+Most endpoints require a JSON Web Token (JWT).
+- **Header**: `Authorization: Bearer <your_jwt_token>`
+- **Token Type**: Bearer
+
+### Role-Based Access Control (RBAC)
+The API uses strict RBAC. Ensure your user has the appropriate role:
+- `admin`: Full platform management.
+- `validator`: Field agents who identify and verify needs.
+- `partner`: Merchants/Shops providing the goods.
+- `donor`: Authenticated donors (guest donations are also supported).
+
+---
+
+## 🌍 Public API (No Auth Required)
+These routes are designed for the "Binance-style" transparency dashboard.
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/public/dashboard` | Returns global stats (total donations, top categories, etc.). |
+| `GET` | `/public/needs` | Catalog of all **Open** needs. |
+| `GET` | `/public/needs/:needId` | Full details of a specific need. |
+| `GET` | `/public/map` | Geo-data for the impact map. |
+| `GET` | `/public/transactions/:id` | Public receipt for a specific donation. |
+| `GET` | `/public/verify/:hash` | Verifies a donation proof against the Polygon Blockchain. |
 
 ---
 
-## 🌍 Public Routes (No Auth required)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/public/dashboard` | Stats globally (donations, transactions, etc.) |
-| `GET` | `/public/map` | Data for the heatmap/impact map |
-| `GET` | `/public/needs` | List all available needs (Binance-style) |
-| `GET` | `/public/needs/:needId` | Detail of a specific need |
-| `GET` | `/public/verify/:hash` | Verify a transaction on the blockchain |
+## 👤 Authentication Endpoints (`/auth`)
+Handled by the Chinguisoft SMS service for OTP verification.
 
-## 👤 Auth Routes
-| Method | Endpoint | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/auth/register` | `{ full_name, phone, role, password }` | Register a new user |
-| `POST` | `/auth/login` | `{ phone, password }` | Login and get token |
-| `POST` | `/auth/refresh` | `{ refreshToken }` | Get a new access token |
+### Register
+`POST /auth/register`
+- **Payload**:
+```json
+{
+  "full_name": "Ahmed Mauritanie",
+  "phone": "+222xxxxxxxx",
+  "password": "secure_password",
+  "role": "validator" 
+}
+```
+- **Note**: Roles can be `validator`, `partner`, or `donor`. Admins are created via seeder.
 
-## 🎁 Donor Routes
-| Method | Endpoint | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/donor/needs/:needId/fund` | `{ donor_phone, payment_method }` | Fund a need (Guest ok) |
-| `GET` | `/donor/donations` | - | My donation history (Auth req) |
-| `GET` | `/donor/donations/stats` | - | My impact stats |
+### Login
+`POST /auth/login`
+- **Payload**: `{ "phone": "+222xxxxxxxx", "password": "..." }`
+- **Response**: `{ "token": "...", "user": { ... } }`
 
-## 🔍 Validator Routes
-| Method | Endpoint | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/validator/needs` | `{ title, description, amount, partner_id, ... }` | Submit a new need |
-| `GET` | `/validator/needs/pending` | - | Needs waiting for admin approval |
-| `POST` | `/validator/delivery/confirm` | `FormData (photo, transaction_id)` | Confirm delivery with photo |
-
-## 🤝 Partner Routes
-| Method | Endpoint | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/partner/orders` | - | List of funded needs to prepare |
-| `PATCH` | `/partner/orders/:id/status` | `{ status }` | Update order status (ready, etc.) |
-
-## 🛡️ Admin Routes
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/admin/stats` | Global admin dashboard stats |
-| `GET` | `/admin/needs/pending` | List needs for approval |
-| `POST` | `/admin/needs/:needId/approve` | Approve a validator's need |
-| `GET` | `/admin/validators/pending` | New validators to approve |
-| `GET` | `/admin/partners/pending` | New partners to approve |
+### Verify Phone (OTP)
+`POST /auth/verify-phone`
+- **Payload**: `{ "phone": "+222xxxxxxxx", "code": "123456" }`
 
 ---
-*Generated for the IHSAN Frontend Team*
+
+## 🔍 Validator Endpoints (`/validator`)
+*Requires `validator` role + Approved Profile.*
+
+### Submit a Need
+`POST /validator/needs`
+- **Payload**:
+```json
+{
+  "title": "Aide Alimentaire Arafat",
+  "description": "Besoin urgent d'un panier repas",
+  "estimated_amount": 5000,
+  "category": "food_basket",
+  "partner_id": "UUID",
+  "location_quarter": "Arafat",
+  "priority": 3,
+  "beneficiary_description": "Famille de 6 personnes",
+  "family_size": 6
+}
+```
+
+### Confirm Delivery (Photo Proof)
+`POST /validator/needs/:needId/confirm`
+- **Type**: `multipart/form-data`
+- **Field**: `proof_photo` (Image file)
+- **Constraint**: Must be an approved validator.
+
+---
+
+## 🛡️ Admin Endpoints (`/admin`)
+*Requires `admin` role.*
+
+### Approve Need
+`PUT /admin/needs/:needId/approve`
+- **Payload**: `{ "reason": "Documents vérifiés" }`
+
+### Manage Partners
+- `GET /admin/partners`: List all partners.
+- `GET /admin/partners/pending`: New requests.
+- `PUT /admin/partners/:id/approve`: Approve partner profile.
+
+---
+
+## 🎁 Donor Endpoints (`/donor`)
+*Guest donations supported. History requires login.*
+
+### Fund a Need (The Gift)
+`POST /donor/needs/:needId/fund`
+- **Payload**:
+```json
+{
+  "donor_phone": "+22248888888",
+  "payment_method": "mobile_money"
+}
+```
+- **Response**: Returns a unique `receipt_number` and `blockchain_hash`.
+
+---
+
+## 🤝 Partner Endpoints (`/partner`)
+*Requires `partner` role.*
+
+### Orders & Status
+- `GET /partner/orders`: Needs funded for the partner.
+- `PUT /partner/orders/:id/status`: Update to `ready` for pickup.
+
+---
+
+### � Integration Tips
+1. **Phone Format**: Always use `+222` prefix for Mauritanian numbers.
+2. **Category Enums**: `iftar_meal`, `food_basket`, `clothing`, `medical`, `other`.
+3. **Status Flow**: `pending` → `open` → `funded` → `completed`.
