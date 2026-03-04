@@ -2,6 +2,8 @@ import Need from '../../models/Need.js';
 import Partner from '../../models/Partner.js';
 import Validator from '../../models/Validator.js';
 import Beneficiary from '../../models/Beneficiary.js';
+import Transaction from '../../models/Transaction.js';
+import User from '../../models/User.js';
 import twilioService from '../../services/sms/twilio.service.js';
 import pushService from '../../services/notification/push.service.js';
 import { Op } from 'sequelize';
@@ -22,15 +24,15 @@ export const createNeed = async (req, res) => {
       beneficiary_description,
       family_size
     } = req.body;
-    
+
     // Vérifier que le validateur est approuvé
     const validator = await Validator.findOne({
       where: { user_id: req.user.id }
     });
-    
+
     if (!validator || validator.verification_status !== 'approved') {
-      return res.status(403).json({ 
-        error: 'Vous devez être un validateur approuvé pour créer un besoin' 
+      return res.status(403).json({
+        error: 'Vous devez être un validateur approuvé pour créer un besoin'
       });
     }
 
@@ -44,7 +46,7 @@ export const createNeed = async (req, res) => {
       location_lat,
       location_lng
     });
-    
+
     // Créer le besoin
     const need = await Need.create({
       validator_id: req.user.id,
@@ -75,7 +77,7 @@ export const createNeed = async (req, res) => {
         location_quarter
       );
     }
-    
+
     res.status(201).json({
       message: 'Besoin créé avec succès. En attente de validation admin.',
       need
@@ -105,7 +107,7 @@ export const getMyNeeds = async (req, res) => {
       ],
       order: [['created_at', 'DESC']]
     });
-    
+
     res.json(needs);
   } catch (error) {
     console.error('Get my needs error:', error);
@@ -146,7 +148,7 @@ export const getNeedsToConfirm = async (req, res) => {
       ],
       order: [['funded_at', 'ASC']]
     });
-    
+
     res.json(needs);
   } catch (error) {
     console.error('Get needs to confirm error:', error);

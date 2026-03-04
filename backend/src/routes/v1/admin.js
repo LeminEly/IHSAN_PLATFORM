@@ -3,12 +3,17 @@ import { authenticate, requireRole } from '../../middleware/auth.js';
 import { getPendingValidators, approveValidator, rejectValidator, suspendValidator } from '../../controllers/admin/validators.js';
 import { getPendingPartners, approvePartner, rejectPartner, recordSiteVisit } from '../../controllers/admin/partners.js';
 import { getAdminStats, suspendUser, activateUser } from '../../controllers/admin/users.js';
+import { getPendingNeeds, approveNeed, rejectNeed } from '../../controllers/admin/needs.js';
 
 const router = express.Router();
 
 router.use(authenticate, requireRole('admin'));
 
 router.get('/stats', getAdminStats);
+
+router.get('/needs/pending', getPendingNeeds);
+router.put('/needs/:needId/approve', approveNeed);
+router.put('/needs/:needId/reject', rejectNeed);
 
 router.get('/validators/pending', getPendingValidators);
 router.put('/validators/:validatorId/approve', approveValidator);

@@ -5,12 +5,11 @@ import { fundNeed, getMyDonations, getDonationReceipt, getDonationStats } from '
 
 const router = express.Router();
 
-router.use(authenticate, requireRole('donor'));
+router.get('/needs', optionalAuthenticate, getAvailableNeeds);
+router.get('/needs/search', optionalAuthenticate, searchNeeds);
+router.get('/needs/:needId', optionalAuthenticate, getNeedById);
 
-router.get('/needs', getAvailableNeeds);
-router.get('/needs/search', searchNeeds);
-router.get('/needs/:needId', getNeedById);
-router.post('/needs/:needId/fund', fundNeed);
+router.post('/needs/:needId/fund', optionalAuthenticate, fundNeed);
 
 router.get('/donations', getMyDonations);
 router.get('/donations/stats', getDonationStats);

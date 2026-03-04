@@ -1,5 +1,6 @@
 import express from 'express';
-import { register, login, verifyPhone, resendCode, refreshToken, logout } from '../../controllers/auth/register.js';
+import { register, verifyPhone, resendCode } from '../../controllers/auth/register.js';
+import { login, refreshToken, logout } from '../../controllers/auth/login.js';
 import { authenticate } from '../../middleware/auth.js';
 import { validate, registerValidator, loginValidator, verifyPhoneValidator } from '../../middleware/validation.js';
 

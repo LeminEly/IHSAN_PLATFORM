@@ -5,7 +5,7 @@ import Environment from '../config/environment.js';
 export const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Authentification requise' });
     }
@@ -25,6 +25,29 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Session expirée', code: 'TOKEN_EXPIRED' });
     }
     return res.status(401).json({ error: 'Token invalide' });
+  }
+};
+
+export const optionalAuthenticate = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, Environment.get('JWT_SECRET'));
+    const user = await User.findByPk(decoded.id);
+
+    if (user && user.is_active) {
+      req.user = user;
+      req.userId = user.id;
+    }
+
+    next();
+  } catch (error) {
+    // Fail silently for optional auth
+    next();
   }
 };
 

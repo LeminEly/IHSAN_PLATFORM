@@ -9,6 +9,8 @@ import twilioService from '../../services/sms/twilio.service.js';
 import pushService from '../../services/notification/push.service.js';
 import mobileMoneyService from '../../services/payment/mobile-money.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
+import { Op } from 'sequelize';
+import sequelize from '../../config/database.js';
 
 export const fundNeed = async (req, res) => {
   try {
@@ -22,7 +24,7 @@ export const fundNeed = async (req, res) => {
     }
 
     const formattedDonorPhone = phoneValidation.formatted;
-    
+
     // Récupérer le besoin
     const need = await Need.findOne({
       where: {
@@ -42,19 +44,19 @@ export const fundNeed = async (req, res) => {
         }
       ]
     });
-    
+
     if (!need) {
       return res.status(400).json({ error: 'Besoin non disponible' });
     }
-    
+
     if (need.expiry_date && need.expiry_date < new Date()) {
       return res.status(400).json({ error: 'Ce besoin a expiré' });
     }
 
     // Vérifier que le partenaire a un numéro de paiement valide
     if (!need.partner.payment_phone) {
-      return res.status(400).json({ 
-        error: 'Le partenaire n\'a pas de numéro de paiement configuré' 
+      return res.status(400).json({
+        error: 'Le partenaire n\'a pas de numéro de paiement configuré'
       });
     }
 
@@ -72,10 +74,10 @@ export const fundNeed = async (req, res) => {
 
     // 2. Créer la transaction
     const receipt_number = HashGenerator.generateReceiptNumber();
-    
+
     const transaction = await Transaction.create({
       need_id: need.id,
-      donor_id: req.user.id,
+      donor_id: req.user?.id || null, // Allow anonymous/guest donation
       partner_id: need.partner_id,
       amount: need.estimated_amount,
       payment_method,
@@ -103,15 +105,15 @@ export const fundNeed = async (req, res) => {
       timestamp: new Date().toISOString(),
       receipt: receipt_number
     };
-    
+
     const dataHash = HashGenerator.generateSHA256(transactionData);
-    
+
     // 5. Enregistrer sur la blockchain (asynchrone, ne pas bloquer)
     polygonService.storeTransaction({
       id: transaction.id,
       amount: need.estimated_amount,
       need_id: need.id,
-      donor_id: req.user.id,
+      donor_id: req.user?.id || null,
       location_quarter: need.location_quarter,
       created_at: new Date()
     }).then(async (result) => {
@@ -142,16 +144,18 @@ export const fundNeed = async (req, res) => {
       formattedDonorPhone
     );
 
-    // Au donneur (Push)
-    await pushService.sendToUser(req.user.id, {
-      title: 'Don effectué',
-      body: `Votre don de ${need.estimated_amount} MRU a été enregistré`,
-      data: {
-        type: 'donation_made',
-        transactionId: transaction.id,
-        needId: need.id
-      }
-    });
+    // Au donneur (Push si connecté)
+    if (req.user) {
+      await pushService.sendToUser(req.user.id, {
+        title: 'Don effectué',
+        body: `Votre don de ${need.estimated_amount} MRU a été enregistré`,
+        data: {
+          type: 'donation_made',
+          transactionId: transaction.id,
+          needId: need.id
+        }
+      });
+    }
 
     res.status(201).json({
       message: 'Don effectué avec succès',
@@ -201,7 +205,7 @@ export const getMyDonations = async (req, res) => {
       ],
       order: [['created_at', 'DESC']]
     });
-    
+
     res.json({ donations });
 
   } catch (error) {
@@ -213,7 +217,7 @@ export const getMyDonations = async (req, res) => {
 export const getDonationReceipt = async (req, res) => {
   try {
     const { transactionId } = req.params;
-    
+
     const transaction = await Transaction.findOne({
       where: {
         id: transactionId,
@@ -239,11 +243,11 @@ export const getDonationReceipt = async (req, res) => {
         }
       ]
     });
-    
+
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction non trouvée' });
     }
-    
+
     // Vérifier sur la blockchain si disponible
     let blockchainVerification = null;
     if (transaction.blockchain_tx_hash) {
@@ -251,7 +255,7 @@ export const getDonationReceipt = async (req, res) => {
         transaction.blockchain_hash
       );
     }
-    
+
     res.json({
       receipt_number: transaction.receipt_number,
       amount: transaction.amount,
@@ -296,7 +300,7 @@ export const getDonationStats = async (req, res) => {
     });
 
     const byMonth = await Transaction.findAll({
-      where: { 
+      where: {
         donor_id: req.user.id,
         created_at: { [Op.gte]: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
       },

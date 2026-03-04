@@ -4,19 +4,26 @@ dotenv.config();
 const requiredEnvVars = [
   'NODE_ENV',
   'PORT',
-  'DB_HOST',
-  'DB_NAME',
-  'DB_USER',
-  'DB_PASSWORD',
   'JWT_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_PHONE_NUMBER'
 ];
 
+const dbVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+
 class Environment {
   static validate() {
     const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+    // Check for either DATABASE_URL or the full set of DB variables
+    if (!process.env.DATABASE_URL) {
+      const missingDb = dbVars.filter(v => !process.env[v]);
+      if (missingDb.length > 0) {
+        missing.push(...missingDb);
+      }
+    }
+
     if (missing.length > 0) {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }

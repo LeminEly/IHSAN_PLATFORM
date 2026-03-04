@@ -1,4 +1,4 @@
-import OneSignal from '@onesignal/node-oneshot';
+import OneSignal from '@onesignal/node-onesignal';
 import Environment from '../../config/environment.js';
 
 class PushNotificationService {

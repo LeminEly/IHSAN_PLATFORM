@@ -2,6 +2,8 @@ import Need from '../../models/Need.js';
 import Transaction from '../../models/Transaction.js';
 import ImpactProof from '../../models/ImpactProof.js';
 import Validator from '../../models/Validator.js';
+import Partner from '../../models/Partner.js';
+import Beneficiary from '../../models/Beneficiary.js';
 import User from '../../models/User.js';
 import cloudinary from '../../config/cloudinary.js';
 import twilioService from '../../services/sms/twilio.service.js';
@@ -13,7 +15,7 @@ export const confirmDelivery = async (req, res) => {
   try {
     const { needId } = req.params;
     const { proof_type, confirmation_code } = req.body;
-    
+
     // 1. Récupérer le besoin et la transaction
     const need = await Need.findOne({
       where: {
@@ -22,8 +24,8 @@ export const confirmDelivery = async (req, res) => {
         status: 'funded'
       },
       include: [
-        { 
-          model: Transaction, 
+        {
+          model: Transaction,
           as: 'transaction',
           include: [
             { model: User, as: 'donor' },
@@ -33,10 +35,10 @@ export const confirmDelivery = async (req, res) => {
         { model: Partner, as: 'partner' }
       ]
     });
-    
+
     if (!need) {
-      return res.status(404).json({ 
-        error: 'Besoin non trouvé ou déjà confirmé' 
+      return res.status(404).json({
+        error: 'Besoin non trouvé ou déjà confirmé'
       });
     }
 
@@ -68,7 +70,7 @@ export const confirmDelivery = async (req, res) => {
       );
 
       mediaUrl = result.secure_url;
-      
+
       // Générer une miniature
       const thumbnail = await cloudinary.uploader.upload(
         `data:image/jpeg;base64,${blurredImage.toString('base64')}`,
@@ -80,7 +82,7 @@ export const confirmDelivery = async (req, res) => {
           ]
         }
       );
-      
+
       thumbnailUrl = thumbnail.secure_url;
       isBlurred = true;
     }
@@ -112,7 +114,7 @@ export const confirmDelivery = async (req, res) => {
     const validator = await Validator.findOne({
       where: { user_id: req.user.id }
     });
-    
+
     const newTotal = validator.total_deliveries + 1;
     await validator.update({
       total_deliveries: newTotal,
@@ -132,7 +134,7 @@ export const confirmDelivery = async (req, res) => {
     await pushService.sendToUser(transaction.donor_id, {
       title: 'Don confirmé',
       body: `Votre don pour "${need.title}" a été remis !`,
-      data: { 
+      data: {
         type: 'delivery_confirmed',
         transactionId: transaction.id,
         needId: need.id
@@ -163,6 +165,25 @@ export const confirmDelivery = async (req, res) => {
       console.error('Erreur blockchain non bloquante:', blockchainError);
     }
 
+    // 9. Émettre les événements Socket.io en temps réel
+    try {
+      const io = req.app.get('io');
+      const impactProof = await ImpactProof.findOne({ where: { transaction_id: transaction.id } });
+      if (io) {
+        io.emit('new-transaction', {
+          id: transaction.id,
+          amount: transaction.amount,
+          need_title: need.title,
+          location_quarter: need.location_quarter,
+          confirmed_at: transaction.confirmed_at,
+          proof_image: impactProof?.thumbnail_url,
+          blockchain_url: transaction.blockchain_explorer_url
+        });
+      }
+    } catch (socketError) {
+      console.error('Socket emit error (non-blocking):', socketError);
+    }
+
     res.json({
       message: 'Livraison confirmée avec succès',
       transaction: {
@@ -182,12 +203,12 @@ export const confirmDelivery = async (req, res) => {
 export const registerBeneficiary = async (req, res) => {
   try {
     const { description, family_size, location_quarter, location_lat, location_lng } = req.body;
-    
+
     // Générer un code unique pour le bénéficiaire
-    const reference_code = 'BEN-' + 
+    const reference_code = 'BEN-' +
       Date.now().toString(36).toUpperCase() + '-' +
       Math.random().toString(36).substring(2, 6).toUpperCase();
-    
+
     const beneficiary = await Beneficiary.create({
       reference_code,
       registered_by: req.user.id,
@@ -197,7 +218,7 @@ export const registerBeneficiary = async (req, res) => {
       location_lat,
       location_lng
     });
-    
+
     res.status(201).json({
       message: 'Bénéficiaire enregistré avec succès',
       reference_code: beneficiary.reference_code,
@@ -215,55 +236,40 @@ export const getValidatorStats = async (req, res) => {
     const validator = await Validator.findOne({
       where: { user_id: req.user.id }
     });
-    
+
     const stats = {
       reputation: validator.reputation_score,
       total_deliveries: validator.total_deliveries,
       success_rate: validator.success_rate,
       pending_needs: await Need.count({
-        where: { 
-          validator_id: req.user.id, 
-          status: 'pending' 
+        where: {
+          validator_id: req.user.id,
+          status: 'pending'
         }
       }),
       open_needs: await Need.count({
-        where: { 
-          validator_id: req.user.id, 
-          status: 'open' 
+        where: {
+          validator_id: req.user.id,
+          status: 'open'
         }
       }),
       funded_needs: await Need.count({
-        where: { 
-          validator_id: req.user.id, 
-          status: 'funded' 
+        where: {
+          validator_id: req.user.id,
+          status: 'funded'
         }
       }),
       completed_needs: await Need.count({
-        where: { 
-          validator_id: req.user.id, 
-          status: 'completed' 
+        where: {
+          validator_id: req.user.id,
+          status: 'completed'
         }
       })
     };
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Get validator stats error:', error);
     res.status(500).json({ error: 'Erreur chargement stats' });
   }
 };
-
-const io = req.app.get('io');
-
-io.emit('new-transaction', {
-  id: transaction.id,
-  amount: transaction.amount,
-  need_title: need.title,
-  location_quarter: need.location_quarter,
-  confirmed_at: transaction.confirmed_at,
-  proof_image: impactProof?.thumbnail_url,
-  blockchain_url: transaction.blockchain_explorer_url
-});
-
-const stats = await getGlobalStats();
-io.emit('stats-updated', stats);

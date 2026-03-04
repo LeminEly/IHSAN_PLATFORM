@@ -6,6 +6,7 @@ import ImpactProof from '../../models/ImpactProof.js';
 import User from '../../models/User.js';
 import Validator from '../../models/Validator.js';
 import Partner from '../../models/Partner.js';
+import Beneficiary from '../../models/Beneficiary.js';
 import polygonService from '../../services/blockchain/polygon.service.js';
 import { GeolocationUtils } from '../../utils/geolocation.js';
 

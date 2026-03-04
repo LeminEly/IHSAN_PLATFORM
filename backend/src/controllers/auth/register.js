@@ -3,6 +3,7 @@ import Validator from '../../models/Validator.js';
 import Partner from '../../models/Partner.js';
 import VerificationCode from '../../models/VerificationCode.js';
 import jwt from 'jsonwebtoken';
+import { Op } from 'sequelize';
 import Environment from '../../config/environment.js';
 import twilioService from '../../services/sms/twilio.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
@@ -14,21 +15,21 @@ export const register = async (req, res, next) => {
     // 1. Valider le numéro de téléphone mauritanien
     const phoneValidation = validateMauritaniaPhone(phone);
     if (!phoneValidation.valid) {
-      return res.status(400).json({ 
-        error: phoneValidation.error 
+      return res.status(400).json({
+        error: phoneValidation.error
       });
     }
 
     const formattedPhone = phoneValidation.formatted;
 
     // 2. Vérifier si l'utilisateur existe
-    const existingUser = await User.findOne({ 
-      where: { phone: formattedPhone } 
+    const existingUser = await User.findOne({
+      where: { phone: formattedPhone }
     });
-    
+
     if (existingUser) {
-      return res.status(409).json({ 
-        error: 'Ce numéro de téléphone est déjà enregistré' 
+      return res.status(409).json({
+        error: 'Ce numéro de téléphone est déjà enregistré'
       });
     }
 
@@ -77,10 +78,10 @@ export const register = async (req, res, next) => {
 
     // 8. Générer le token
     const token = jwt.sign(
-      { 
-        id: user.id, 
+      {
+        id: user.id,
         role: user.role,
-        phone: user.phone 
+        phone: user.phone
       },
       Environment.get('JWT_SECRET'),
       { expiresIn: Environment.get('JWT_EXPIRE') }
@@ -115,16 +116,16 @@ export const verifyPhone = async (req, res, next) => {
     });
 
     if (!verificationCode) {
-      return res.status(400).json({ 
-        error: 'Code invalide ou expiré' 
+      return res.status(400).json({
+        error: 'Code invalide ou expiré'
       });
     }
 
     // 2. Vérifier les tentatives
     if (verificationCode.attempts >= 3) {
       await verificationCode.update({ used_at: new Date() });
-      return res.status(429).json({ 
-        error: 'Trop de tentatives. Veuillez redemander un code.' 
+      return res.status(429).json({
+        error: 'Trop de tentatives. Veuillez redemander un code.'
       });
     }
 
@@ -133,7 +134,7 @@ export const verifyPhone = async (req, res, next) => {
 
     // 4. Vérifier le code
     if (verificationCode.code !== code) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Code incorrect',
         attemptsLeft: 3 - verificationCode.attempts
       });
@@ -141,7 +142,7 @@ export const verifyPhone = async (req, res, next) => {
 
     // 5. Code correct, vérifier le téléphone
     const user = await User.findOne({ where: { phone: formattedPhone } });
-    
+
     await user.update({
       is_phone_verified: true,
       phone_verified_at: new Date()
@@ -169,14 +170,14 @@ export const resendCode = async (req, res, next) => {
     // 1. Vérifier que l'utilisateur existe
     const user = await User.findOne({ where: { phone: formattedPhone } });
     if (!user) {
-      return res.status(404).json({ 
-        error: 'Utilisateur non trouvé' 
+      return res.status(404).json({
+        error: 'Utilisateur non trouvé'
       });
     }
 
     if (user.is_phone_verified) {
-      return res.status(400).json({ 
-        error: 'Téléphone déjà vérifié' 
+      return res.status(400).json({
+        error: 'Téléphone déjà vérifié'
       });
     }
 
