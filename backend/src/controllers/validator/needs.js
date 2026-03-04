@@ -85,7 +85,14 @@ export const createNeed = async (req, res) => {
 
   } catch (error) {
     console.error('Create need error:', error);
-    res.status(500).json({ error: 'Erreur création besoin' });
+    if (error.original) {
+      console.error('Original DB Error:', error.original.message);
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Erreur création besoin',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -153,5 +160,39 @@ export const getNeedsToConfirm = async (req, res) => {
   } catch (error) {
     console.error('Get needs to confirm error:', error);
     res.status(500).json({ error: 'Erreur chargement' });
+  }
+};
+export const getValidatorStats = async (req, res) => {
+  try {
+    const stats = await Need.findAll({
+      where: { validator_id: req.user.id },
+      attributes: [
+        'status',
+        [Need.sequelize.fn('COUNT', Need.sequelize.col('id')), 'count']
+      ],
+      group: ['status']
+    });
+
+    const formattedStats = {
+      pending: 0,
+      open: 0,
+      funded: 0,
+      completed: 0,
+      total: 0
+    };
+
+    stats.forEach(s => {
+      const status = s.status;
+      const count = parseInt(s.get('count'));
+      if (formattedStats.hasOwnProperty(status)) {
+        formattedStats[status] = count;
+      }
+      formattedStats.total += count;
+    });
+
+    res.json(formattedStats);
+  } catch (error) {
+    console.error('Get validator stats error:', error);
+    res.status(500).json({ error: 'Erreur chargement statistiques' });
   }
 };

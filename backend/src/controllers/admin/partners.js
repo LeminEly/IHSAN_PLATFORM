@@ -4,6 +4,24 @@ import AdminAction from '../../models/AdminAction.js';
 import smsService from '../../services/sms/index.js';
 import pushService from '../../services/notification/push.service.js';
 
+export const getAllPartners = async (req, res) => {
+  try {
+    const partners = await Partner.findAll({
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'full_name', 'phone', 'email', 'created_at']
+      }],
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json(partners);
+  } catch (error) {
+    console.error('Get all partners error:', error);
+    res.status(500).json({ error: 'Erreur chargement partenaires' });
+  }
+};
+
 export const getPendingPartners = async (req, res) => {
   try {
     const partners = await Partner.findAll({

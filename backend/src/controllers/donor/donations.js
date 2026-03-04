@@ -100,7 +100,7 @@ export const fundNeed = async (req, res) => {
     const transactionData = {
       transaction_id: transaction.id,
       need_id: need.id,
-      donor_id: req.user.id,
+      donor_id: req.user?.id || null,
       amount: need.estimated_amount,
       timestamp: new Date().toISOString(),
       receipt: receipt_number
@@ -170,7 +170,14 @@ export const fundNeed = async (req, res) => {
 
   } catch (error) {
     console.error('Fund need error:', error);
-    res.status(500).json({ error: 'Erreur lors du don' });
+    if (error.original) {
+      console.error('Original DB Error:', error.original.message);
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du don',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

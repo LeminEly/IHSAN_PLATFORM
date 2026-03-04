@@ -83,7 +83,7 @@ export const getPublicDashboard = async (req, res) => {
         {
           model: ImpactProof,
           as: 'impact_proof',
-          attributes: ['media_url', 'thumbnail_url', 'proof_type', 'uploaded_at'],
+          attributes: ['media_url', 'thumbnail_url', 'proof_type', 'created_at'],
           required: false
         },
         {
@@ -173,7 +173,7 @@ export const getPublicDashboard = async (req, res) => {
           },
           proof: t.impact_proof ? {
             image: t.impact_proof.thumbnail_url || t.impact_proof.media_url,
-            date: t.impact_proof.uploaded_at
+            date: t.impact_proof.created_at
           } : null,
           blockchain: t.blockchain_explorer_url ? {
             url: t.blockchain_explorer_url,
@@ -201,8 +201,8 @@ export const getPublicDashboard = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
-    res.status(500).json({ success: false, error: 'Erreur serveur' });
+    console.error('Dashboard Error Stack:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur', details: error.message });
   }
 };
 
@@ -221,7 +221,7 @@ export const getPublicTransaction = async (req, res) => {
             { model: Beneficiary, as: 'beneficiary', attributes: ['reference_code', 'description', 'family_size'] }
           ]
         },
-        { model: ImpactProof, as: 'impact_proof', attributes: ['media_url', 'proof_type', 'uploaded_at'] },
+        { model: ImpactProof, as: 'impact_proof', attributes: ['media_url', 'proof_type', 'created_at'] },
         { model: Partner, as: 'partner', attributes: ['business_name'] }
       ]
     });
@@ -258,7 +258,7 @@ export const getPublicTransaction = async (req, res) => {
         proof: transaction.impact_proof ? {
           image: transaction.impact_proof.media_url,
           type: transaction.impact_proof.proof_type,
-          date: transaction.impact_proof.uploaded_at
+          date: transaction.impact_proof.created_at
         } : null,
         blockchain: {
           hash: transaction.blockchain_hash,
