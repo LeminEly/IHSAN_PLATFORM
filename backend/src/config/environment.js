@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 const requiredEnvVars = [
   'NODE_ENV',
   'PORT',
@@ -8,15 +11,12 @@ const requiredEnvVars = [
   'JWT_SECRET',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
-  'TWILIO_PHONE_NUMBER',
-  'POLYGON_RPC_URL',
-  'POLYGON_PRIVATE_KEY'
+  'TWILIO_PHONE_NUMBER'
 ];
 
 class Environment {
   static validate() {
     const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
-    
     if (missing.length > 0) {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
