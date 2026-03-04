@@ -1,0 +1,41 @@
+frontend/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── Layout/
+│   │   │   ├── Navbar.js
+│   │   │   └── Footer.js
+│   │   ├── Auth/
+│   │   │   ├── Login.js
+│   │   │   ├── Register.js
+│   │   │   └── VerifyPhone.js
+│   │   ├── Donor/
+│   │   │   ├── Catalog.js
+│   │   │   ├── NeedDetail.js
+│   │   │   ├── MyDonations.js
+│   │   │   └── Receipt.js
+│   │   ├── Validator/
+│   │   │   ├── Dashboard.js
+│   │   │   ├── CreateNeed.js
+│   │   │   ├── MyNeeds.js
+│   │   │   └── ConfirmDelivery.js
+│   │   ├── Partner/
+│   │   │   ├── Orders.js
+│   │   │   └── OrderDetail.js
+│   │   ├── Admin/
+│   │   │   ├── PendingValidators.js
+│   │   │   ├── PendingPartners.js
+│   │   │   └── Dashboard.js
+│   │   └── Public/
+│   │       ├── Home.js
+│   │       ├── MapView.js
+│   │       └── TransactionDetail.js
+│   ├── services/
+│   │   ├── api.js
+│   │   └── auth.js
+│   ├── context/
+│   │   └── AuthContext.js
+│   ├── App.js
+│   └── index.js
+├── .env
+└── package.json
