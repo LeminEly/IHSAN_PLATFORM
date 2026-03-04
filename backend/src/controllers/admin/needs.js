@@ -4,7 +4,7 @@ import Validator from '../../models/Validator.js';
 import Partner from '../../models/Partner.js';
 import AdminAction from '../../models/AdminAction.js';
 import pushService from '../../services/notification/push.service.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 
 /**
  * GET /api/v1/admin/needs/pending

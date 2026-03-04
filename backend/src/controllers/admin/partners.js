@@ -1,7 +1,7 @@
 import Partner from '../../models/Partner.js';
 import User from '../../models/User.js';
 import AdminAction from '../../models/AdminAction.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 import pushService from '../../services/notification/push.service.js';
 
 export const getPendingPartners = async (req, res) => {
@@ -15,7 +15,7 @@ export const getPendingPartners = async (req, res) => {
       }],
       order: [['created_at', 'ASC']]
     });
-    
+
     res.json(partners);
   } catch (error) {
     console.error('Get pending partners error:', error);
@@ -27,15 +27,15 @@ export const approvePartner = async (req, res) => {
   try {
     const { partnerId } = req.params;
     const { reason } = req.body;
-    
+
     const partner = await Partner.findByPk(partnerId, {
       include: [{ model: User, as: 'user' }]
     });
-    
+
     if (!partner) {
       return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
-    
+
     await partner.update({
       verification_status: 'approved',
       verified_by: req.user.id,
@@ -43,10 +43,10 @@ export const approvePartner = async (req, res) => {
     });
 
     await partner.user.update({ is_active: true });
-    
+
     // SMS d'approbation
-    await twilioService.notifyAccountApproved(
-      partner.user.phone, 
+    await smsService.notifyAccountApproved(
+      partner.user.phone,
       'partner'
     );
 
@@ -56,7 +56,7 @@ export const approvePartner = async (req, res) => {
       body: 'Votre compte partenaire a été approuvé ! Vous pouvez maintenant recevoir des commandes.',
       data: { type: 'account_approved', role: 'partner' }
     });
-    
+
     await AdminAction.create({
       admin_id: req.user.id,
       action_type: 'approve_partner',
@@ -64,7 +64,7 @@ export const approvePartner = async (req, res) => {
       target_partner_id: partner.id,
       reason
     });
-    
+
     res.json({
       message: 'Partenaire approuvé avec succès',
       partner
@@ -80,15 +80,15 @@ export const rejectPartner = async (req, res) => {
   try {
     const { partnerId } = req.params;
     const { reason } = req.body;
-    
+
     const partner = await Partner.findByPk(partnerId, {
       include: [{ model: User, as: 'user' }]
     });
-    
+
     if (!partner) {
       return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
-    
+
     await partner.update({
       verification_status: 'rejected',
       verified_by: req.user.id,
@@ -96,12 +96,12 @@ export const rejectPartner = async (req, res) => {
     });
 
     // SMS de rejet
-    await twilioService.notifyAccountRejected(
+    await smsService.notifyAccountRejected(
       partner.user.phone,
       'partner',
       reason
     );
-    
+
     await AdminAction.create({
       admin_id: req.user.id,
       action_type: 'reject_partner',
@@ -109,7 +109,7 @@ export const rejectPartner = async (req, res) => {
       target_partner_id: partner.id,
       reason
     });
-    
+
     res.json({
       message: 'Partenaire rejeté',
       partner
@@ -125,13 +125,13 @@ export const recordSiteVisit = async (req, res) => {
   try {
     const { partnerId } = req.params;
     const { notes, photos } = req.body;
-    
+
     const partner = await Partner.findByPk(partnerId);
-    
+
     if (!partner) {
       return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
-    
+
     await partner.update({
       site_visit_required: false,
       site_visit_date: new Date(),
@@ -139,7 +139,7 @@ export const recordSiteVisit = async (req, res) => {
       site_visit_photos: photos,
       visited_by: req.user.id
     });
-    
+
     res.json({
       message: 'Visite enregistrée avec succès',
       partner

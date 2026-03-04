@@ -5,7 +5,7 @@ import VerificationCode from '../../models/VerificationCode.js';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
 import Environment from '../../config/environment.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
 
 export const register = async (req, res, next) => {
@@ -64,7 +64,7 @@ export const register = async (req, res, next) => {
     }
 
     // 5. Envoyer le code de vérification par SMS (RÉEL)
-    const { code } = await twilioService.sendVerificationCode(formattedPhone);
+    const { code } = await smsService.sendVerificationCode(formattedPhone, 'ar');
 
     // 6. Sauvegarder le code en base
     await VerificationCode.create({
@@ -74,7 +74,7 @@ export const register = async (req, res, next) => {
     });
 
     // 7. Message de bienvenue
-    await twilioService.sendWelcomeMessage(formattedPhone, role);
+    await smsService.sendWelcomeMessage(formattedPhone, role);
 
     // 8. Générer le token
     const token = jwt.sign(
@@ -182,7 +182,7 @@ export const resendCode = async (req, res, next) => {
     }
 
     // 2. Générer et envoyer un nouveau code
-    const { code } = await twilioService.sendVerificationCode(formattedPhone);
+    const { code } = await smsService.sendVerificationCode(formattedPhone, 'ar');
 
     // 3. Sauvegarder le nouveau code
     await VerificationCode.create({

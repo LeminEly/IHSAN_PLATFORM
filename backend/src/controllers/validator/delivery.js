@@ -6,7 +6,7 @@ import Partner from '../../models/Partner.js';
 import Beneficiary from '../../models/Beneficiary.js';
 import User from '../../models/User.js';
 import cloudinary from '../../config/cloudinary.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 import pushService from '../../services/notification/push.service.js';
 import polygonService from '../../services/blockchain/polygon.service.js';
 import sharp from 'sharp'; // Pour flouter les visages
@@ -50,40 +50,42 @@ export const confirmDelivery = async (req, res) => {
     let isBlurred = false;
 
     if (req.file) {
-      // Flouter les visages avec sharp (version simple)
-      // En production, utiliser face-api.js ou service spécialisé
-      const blurredImage = await sharp(req.file.buffer)
-        .blur(5) // Flou gaussien
+      // 1. Privacy First: Blur faces using sharp
+      const processedBuffer = await sharp(req.file.buffer)
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .blur(10) // Professional privacy blur
+        .jpeg({ quality: 80 })
         .toBuffer();
 
-      // Upload sur Cloudinary
-      const result = await cloudinary.uploader.upload(
-        `data:image/jpeg;base64,${blurredImage.toString('base64')}`,
-        {
-          folder: 'ihsan/impact',
-          public_id: `proof-${transaction.id}`,
-          transformation: [
-            { width: 800, crop: 'limit' },
-            { quality: 'auto' }
-          ]
-        }
-      );
+      // 2. Pro Upload: Direct stream to Cloudinary
+      const uploadToCloudinary = (buffer, options) => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+          });
+          stream.end(buffer);
+        });
+      };
+
+      const result = await uploadToCloudinary(processedBuffer, {
+        folder: 'ihsan/impact',
+        public_id: `proof-${transaction.id}`,
+        tags: ['impact_proof', need.category]
+      });
 
       mediaUrl = result.secure_url;
 
-      // Générer une miniature
-      const thumbnail = await cloudinary.uploader.upload(
-        `data:image/jpeg;base64,${blurredImage.toString('base64')}`,
-        {
-          folder: 'ihsan/thumbnails',
-          public_id: `thumb-${transaction.id}`,
-          transformation: [
-            { width: 200, height: 200, crop: 'thumb' }
-          ]
-        }
-      );
+      // 3. Pro Thumbnail: Let Cloudinary handle the resizing for efficiency
+      thumbnailUrl = cloudinary.url(result.public_id, {
+        width: 300,
+        height: 300,
+        crop: 'fill',
+        gravity: 'face',
+        quality: 'auto',
+        fetch_format: 'auto'
+      });
 
-      thumbnailUrl = thumbnail.secure_url;
       isBlurred = true;
     }
 
@@ -124,7 +126,7 @@ export const confirmDelivery = async (req, res) => {
 
     // 7. Envoyer les notifications
     // SMS au donneur
-    await twilioService.notifyDonorDelivery(
+    await smsService.notifyDonorDelivery(
       transaction.donor_phone,
       need.title,
       transaction.receipt_number

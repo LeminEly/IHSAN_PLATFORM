@@ -4,7 +4,7 @@ import Validator from '../../models/Validator.js';
 import Beneficiary from '../../models/Beneficiary.js';
 import Transaction from '../../models/Transaction.js';
 import User from '../../models/User.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 import pushService from '../../services/notification/push.service.js';
 import { Op } from 'sequelize';
 
@@ -70,7 +70,7 @@ export const createNeed = async (req, res) => {
     });
 
     if (partner) {
-      await twilioService.notifyPartnerNewNeed(
+      await smsService.notifyPartnerNewNeed(
         partner.payment_phone,
         title,
         estimated_amount,

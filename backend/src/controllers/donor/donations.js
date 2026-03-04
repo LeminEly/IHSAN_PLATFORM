@@ -5,7 +5,7 @@ import ImpactProof from '../../models/ImpactProof.js';
 import User from '../../models/User.js';
 import { HashGenerator } from '../../utils/hash.js';
 import polygonService from '../../services/blockchain/polygon.service.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import smsService from '../../services/sms/index.js';
 import pushService from '../../services/notification/push.service.js';
 import mobileMoneyService from '../../services/payment/mobile-money.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
@@ -130,14 +130,14 @@ export const fundNeed = async (req, res) => {
 
     // 6. Notifications
     // Au validateur (SMS)
-    await twilioService.notifyValidatorDelivery(
+    await smsService.notifyValidatorDelivery(
       need.validator.phone,
       need.title,
       need.estimated_amount
     );
 
     // Au partenaire (SMS)
-    await twilioService.notifyPartnerPayment(
+    await smsService.notifyPartnerPayment(
       need.partner.payment_phone,
       need.title,
       need.estimated_amount,
