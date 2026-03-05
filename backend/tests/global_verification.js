@@ -2,7 +2,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 dotenv.config();
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Standard API Verification
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 

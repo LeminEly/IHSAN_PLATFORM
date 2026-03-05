@@ -6,8 +6,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Critical for Supabase SSL in some environments
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Seeding script for initial data
 
 async function seed() {
     try {

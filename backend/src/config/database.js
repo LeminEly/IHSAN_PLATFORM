@@ -1,10 +1,7 @@
 import { Sequelize } from 'sequelize';
 import Environment from './environment.js';
 
-// Necessary for Supabase SSL connection in some environments (development audit)
-if (Environment.get('DATABASE_URL')?.includes('supabase.com')) {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
+// Database configuration handled via Environment utility
 
 const dbUrl = Environment.get('DATABASE_URL');
 
