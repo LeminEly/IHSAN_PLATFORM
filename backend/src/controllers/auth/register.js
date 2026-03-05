@@ -3,33 +3,45 @@ import Validator from '../../models/Validator.js';
 import Partner from '../../models/Partner.js';
 import VerificationCode from '../../models/VerificationCode.js';
 import jwt from 'jsonwebtoken';
+import { Op } from 'sequelize';
 import Environment from '../../config/environment.js';
+import cloudinary from '../../config/cloudinary.js';
 import twilioService from '../../services/sms/twilio.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
 
+// Upload un fichier sur Cloudinary depuis req.files
+const uploadToCloudinary = async (file, folder) => {
+  if (!file) return null;
+  // Si c'est déjà une URL string (test ou mock), retourner directement
+  if (typeof file === 'string' && file.startsWith('http')) return file;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: `ihsan/${folder}` },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    );
+    stream.end(file.buffer);
+  });
+};
+
 export const register = async (req, res, next) => {
   try {
-    const { full_name, phone, email, password, role, documents } = req.body;
+    const { full_name, phone, email, password, role } = req.body;
 
-    // 1. Valider le numéro de téléphone mauritanien
+    // 1. Valider le numéro
     const phoneValidation = validateMauritaniaPhone(phone);
     if (!phoneValidation.valid) {
-      return res.status(400).json({ 
-        error: phoneValidation.error 
-      });
+      return res.status(400).json({ error: phoneValidation.error });
     }
-
     const formattedPhone = phoneValidation.formatted;
 
     // 2. Vérifier si l'utilisateur existe
-    const existingUser = await User.findOne({ 
-      where: { phone: formattedPhone } 
-    });
-    
+    const existingUser = await User.findOne({ where: { phone: formattedPhone } });
     if (existingUser) {
-      return res.status(409).json({ 
-        error: 'Ce numéro de téléphone est déjà enregistré' 
-      });
+      return res.status(409).json({ error: 'Ce numéro de téléphone est déjà enregistré' });
     }
 
     // 3. Créer l'utilisateur
@@ -41,56 +53,79 @@ export const register = async (req, res, next) => {
       role
     });
 
-    // 4. Créer le profil spécifique
+    // 4. Créer le profil spécifique selon le rôle
     if (role === 'validator') {
+      // Fichiers uploadés via multipart/form-data
+      const idCardUrl = await uploadToCloudinary(req.files?.id_card?.[0], 'documents');
+      const selfieUrl = await uploadToCloudinary(req.files?.selfie?.[0], 'documents');
+
+      if (!idCardUrl || !selfieUrl) {
+        await user.destroy();
+        return res.status(400).json({ error: 'Carte d\'identité et selfie requis pour les validateurs' });
+      }
+
       await Validator.create({
         user_id: user.id,
-        id_card_url: documents.idCard,
-        selfie_url: documents.selfie,
+        id_card_url: idCardUrl,
+        selfie_url: selfieUrl,
         verification_status: 'pending'
       });
+
     } else if (role === 'partner') {
+      const { business_name, address, payment_phone, payment_operator } = req.body;
+      const registryUrl = await uploadToCloudinary(req.files?.commerce_registry?.[0], 'documents');
+
+      if (!registryUrl) {
+        await user.destroy();
+        return res.status(400).json({ error: 'Registre du commerce requis pour les partenaires' });
+      }
+
       await Partner.create({
         user_id: user.id,
-        business_name: documents.businessName,
+        business_name: business_name || full_name,
         owner_name: full_name,
-        address: documents.address,
-        payment_phone: documents.paymentPhone || formattedPhone,
-        payment_operator: phoneValidation.operator,
-        commerce_registry_url: documents.commerceRegistry,
+        address: address || '',
+        payment_phone: payment_phone || formattedPhone,
+        payment_operator: payment_operator || phoneValidation.operator,
+        commerce_registry_url: registryUrl,
         verification_status: 'pending'
       });
     }
 
-    // 5. Envoyer le code de vérification par SMS (RÉEL)
-    const { code } = await twilioService.sendVerificationCode(formattedPhone);
+    // 5. Envoyer le code de vérification par SMS
+    let code = Math.floor(100000 + Math.random() * 900000).toString();
+    try {
+      const result = await twilioService.sendVerificationCode(formattedPhone);
+      code = result.code || code;
+    } catch (smsError) {
+      console.error('SMS error (non-blocking):', smsError.message);
+      // En dev, on log le code pour tester sans Twilio
+      if (Environment.isDevelopment()) {
+        console.log(`📱 Code de vérification pour ${formattedPhone}: ${code}`);
+      }
+    }
 
     // 6. Sauvegarder le code en base
     await VerificationCode.create({
       phone: formattedPhone,
       code,
-      expires_at: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+      expires_at: new Date(Date.now() + 10 * 60 * 1000)
     });
 
-    // 7. Message de bienvenue
-    await twilioService.sendWelcomeMessage(formattedPhone, role);
-
-    // 8. Générer le token
+    // 7. Générer le token JWT
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        role: user.role,
-        phone: user.phone 
-      },
+      { id: user.id, role: user.role, phone: user.phone },
       Environment.get('JWT_SECRET'),
-      { expiresIn: Environment.get('JWT_EXPIRE') }
+      { expiresIn: Environment.get('JWT_EXPIRE', '7d') }
     );
 
     res.status(201).json({
       message: 'Inscription réussie. Code de vérification envoyé par SMS.',
       token,
       user: user.toJSON(),
-      requiresVerification: true
+      requiresVerification: true,
+      // En dev seulement, retourner le code pour tester
+      ...(Environment.isDevelopment() && { debug_code: code })
     });
 
   } catch (error) {
@@ -101,10 +136,8 @@ export const register = async (req, res, next) => {
 export const verifyPhone = async (req, res, next) => {
   try {
     const { phone, code } = req.body;
-
     const formattedPhone = validateMauritaniaPhone(phone).formatted;
 
-    // 1. Chercher le code en base
     const verificationCode = await VerificationCode.findOne({
       where: {
         phone: formattedPhone,
@@ -115,45 +148,28 @@ export const verifyPhone = async (req, res, next) => {
     });
 
     if (!verificationCode) {
-      return res.status(400).json({ 
-        error: 'Code invalide ou expiré' 
-      });
+      return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
-    // 2. Vérifier les tentatives
-    if (verificationCode.attempts >= 3) {
+    if (verificationCode.attempts >= 5) {
       await verificationCode.update({ used_at: new Date() });
-      return res.status(429).json({ 
-        error: 'Trop de tentatives. Veuillez redemander un code.' 
-      });
+      return res.status(429).json({ error: 'Trop de tentatives. Veuillez redemander un code.' });
     }
 
-    // 3. Incrémenter les tentatives
     await verificationCode.increment('attempts');
 
-    // 4. Vérifier le code
     if (verificationCode.code !== code) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Code incorrect',
-        attemptsLeft: 3 - verificationCode.attempts
+        attemptsLeft: 5 - (verificationCode.attempts + 1)
       });
     }
 
-    // 5. Code correct, vérifier le téléphone
     const user = await User.findOne({ where: { phone: formattedPhone } });
-    
-    await user.update({
-      is_phone_verified: true,
-      phone_verified_at: new Date()
-    });
-
-    // 6. Marquer le code comme utilisé
+    await user.update({ is_phone_verified: true, phone_verified_at: new Date() });
     await verificationCode.update({ used_at: new Date() });
 
-    res.json({
-      message: 'Téléphone vérifié avec succès',
-      user: user.toJSON()
-    });
+    res.json({ message: 'Téléphone vérifié avec succès', user: user.toJSON() });
 
   } catch (error) {
     next(error);
@@ -163,27 +179,20 @@ export const verifyPhone = async (req, res, next) => {
 export const resendCode = async (req, res, next) => {
   try {
     const { phone } = req.body;
-
     const formattedPhone = validateMauritaniaPhone(phone).formatted;
 
-    // 1. Vérifier que l'utilisateur existe
     const user = await User.findOne({ where: { phone: formattedPhone } });
-    if (!user) {
-      return res.status(404).json({ 
-        error: 'Utilisateur non trouvé' 
-      });
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    if (user.is_phone_verified) return res.status(400).json({ error: 'Téléphone déjà vérifié' });
+
+    let code = Math.floor(100000 + Math.random() * 900000).toString();
+    try {
+      const result = await twilioService.sendVerificationCode(formattedPhone);
+      code = result.code || code;
+    } catch (e) {
+      if (Environment.isDevelopment()) console.log(`📱 Nouveau code pour ${formattedPhone}: ${code}`);
     }
 
-    if (user.is_phone_verified) {
-      return res.status(400).json({ 
-        error: 'Téléphone déjà vérifié' 
-      });
-    }
-
-    // 2. Générer et envoyer un nouveau code
-    const { code } = await twilioService.sendVerificationCode(formattedPhone);
-
-    // 3. Sauvegarder le nouveau code
     await VerificationCode.create({
       phone: formattedPhone,
       code,
@@ -191,7 +200,8 @@ export const resendCode = async (req, res, next) => {
     });
 
     res.json({
-      message: 'Nouveau code envoyé par SMS'
+      message: 'Nouveau code envoyé par SMS',
+      ...(Environment.isDevelopment() && { debug_code: code })
     });
 
   } catch (error) {
