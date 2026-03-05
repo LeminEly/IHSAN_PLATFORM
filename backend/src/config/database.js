@@ -12,7 +12,7 @@ const sequelize = dbUrl
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false
+        rejectUnauthorized: false // Required for Supabase self-signed certs
       }
     },
     pool: {
