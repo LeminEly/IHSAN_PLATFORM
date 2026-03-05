@@ -3,7 +3,8 @@ import Environment from './environment.js';
 
 // Database configuration handled via Environment utility
 
-const dbUrl = Environment.get('DATABASE_URL');
+const dbUrlRaw = Environment.get('DATABASE_URL');
+const dbUrl = dbUrlRaw ? dbUrlRaw.split('?')[0] : null;
 
 const sequelize = dbUrl
   ? new Sequelize(dbUrl, {
