@@ -58,7 +58,7 @@ function Donations() {
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-3xl font-bold text-blue-600">
-              {stats.overview.average_amount} MRU
+              {Number(stats.overview.average_amount).toFixed(2)} MRU
             </div>
             <div className="text-gray-600">Don moyen</div>
           </div>

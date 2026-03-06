@@ -38,6 +38,8 @@ import AdminPendingValidators from './components/Admin/PendingValidators';
 import AdminPendingPartners from './components/Admin/PendingPartners';
 import AdminUsers from './components/Admin/Users';
 
+import VerifyHash from './components/Public/VerifyHash';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = React.useContext(AuthContext);
@@ -45,6 +47,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" />;
   return children;
 };
+
 
 function App() {
   return (
@@ -155,6 +158,7 @@ function App() {
                   <AdminUsers />
                 </ProtectedRoute>
               } />
+              <Route path="/verify/:hash" element={<VerifyHash />} />
             </Routes>
           </main>
           <Footer />

@@ -38,4 +38,8 @@ frontend/
 │   ├── App.js
 │   └── index.js
 ├── .env
-└── package.json
+├── package.json
+├──structure_frontend.txt
+├──README.md
+├──pakage-lock.json 
+└── taiwlind.config.js 
