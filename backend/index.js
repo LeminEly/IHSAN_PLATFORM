@@ -25,7 +25,12 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: Environment.get('CLIENT_URL', 'http://localhost:3000'),
+  origin: [
+    
+    Environment.get('CLIENT_URL'),
+    'https://ihsan-platform-hdw3.vercel.app',
+    'http://localhost:3000'
+  ],    
     credentials: true
   }
 });

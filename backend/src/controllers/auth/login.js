@@ -29,9 +29,9 @@ export const login = async (req, res, next) => {
     }
 
     if (!user.is_phone_verified) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Téléphone non vérifié',
-        code: 'PHONE_NOT_VERIFIED'
+        code: 'PHONE_NOT_VERIFIED',
       });
     }
 
@@ -40,14 +40,12 @@ export const login = async (req, res, next) => {
     const token = jwt.sign(
       { id: user.id, role: user.role, phone: user.phone },
       Environment.get('JWT_SECRET'),
-      { expiresIn: Environment.get('JWT_EXPIRE') }
+      { expiresIn: Environment.get('JWT_EXPIRE') },
     );
 
-    const refreshToken = jwt.sign(
-      { id: user.id },
-      Environment.get('JWT_REFRESH_SECRET'),
-      { expiresIn: Environment.get('JWT_REFRESH_EXPIRE') }
-    );
+    const refreshToken = jwt.sign({ id: user.id }, Environment.get('JWT_REFRESH_SECRET'), {
+      expiresIn: Environment.get('JWT_REFRESH_EXPIRE'),
+    });
 
     await user.update({ refresh_token: refreshToken });
 
@@ -55,7 +53,7 @@ export const login = async (req, res, next) => {
       message: 'Connexion réussie',
       token,
       refreshToken,
-      user: user.toJSON()
+      user: user.toJSON(),
     });
   } catch (error) {
     next(error);
@@ -80,7 +78,7 @@ export const refreshToken = async (req, res, next) => {
     const token = jwt.sign(
       { id: user.id, role: user.role, phone: user.phone },
       Environment.get('JWT_SECRET'),
-      { expiresIn: Environment.get('JWT_EXPIRE') }
+      { expiresIn: Environment.get('JWT_EXPIRE') },
     );
 
     res.json({ token });
