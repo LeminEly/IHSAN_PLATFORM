@@ -1,27 +1,26 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+import React from "react";
+
+// Import des composants validator depuis src/components/validator
+import Dashboard from "./components/Validator/Dashboard";
+import CreateNeed from "./components/Validator/CreateNeed";
+import ConfirmDelivery from "./components/Validator/ConfirmDelivery";
+import MyNeeds from "./components/Validator/MyNeeds";
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <h1>IHSAN Platform - Validator</h1>
+
+      {/* Pour tester le Dashboard */}
+      <Dashboard />
+
+      {/* Si tu veux tester d'autres pages, tu peux les décommenter */}
+      {/* <CreateNeed /> */}
+      {/* <ConfirmDelivery /> */}
+      {/* <MyNeeds /> */}
     </div>
   );
 }
 
 export default App;
-
-
