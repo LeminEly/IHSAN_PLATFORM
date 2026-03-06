@@ -105,7 +105,6 @@ CREATE TABLE needs (
     location_quarter VARCHAR(255) NOT NULL,
     location_lat DECIMAL(10,8),
     location_lng DECIMAL(11,8),
-    -- pending = attente validation admin | open = visible dans le catalogue
     status VARCHAR(50) DEFAULT 'pending'
         CHECK (status IN ('pending', 'open', 'funded', 'completed', 'cancelled')),
     priority INTEGER DEFAULT 1 CHECK (priority BETWEEN 1 AND 5),
@@ -140,11 +139,11 @@ CREATE TABLE transactions (
     payment_status VARCHAR(50) DEFAULT 'pending'
         CHECK (payment_status IN ('pending', 'completed', 'failed')),
     payment_completed_at TIMESTAMP,
-    receipt_number VARCHAR(100) UNIQUE NOT NULL, -- Généré automatiquement par trigger
+    receipt_number VARCHAR(100) UNIQUE NOT NULL, 
     receipt_url TEXT,
     status VARCHAR(50) DEFAULT 'pending'
         CHECK (status IN ('pending', 'completed', 'confirmed', 'failed')),
-    blockchain_hash VARCHAR(256), -- SHA-256(donor_id + need_id + amount + timestamp)
+    blockchain_hash VARCHAR(256), 
     blockchain_tx_hash VARCHAR(256),
     blockchain_explorer_url TEXT,
     blockchain_timestamp TIMESTAMP,
@@ -168,7 +167,7 @@ CREATE TABLE impact_proofs (
     proof_type VARCHAR(50) CHECK (proof_type IN ('photo', 'confirmation_code')),
     media_url TEXT NOT NULL,
     thumbnail_url TEXT,
-    is_faces_blurred BOOLEAN DEFAULT false, -- Mis à true par le backend après floutage
+    is_faces_blurred BOOLEAN DEFAULT false, 
     uploaded_by UUID NOT NULL REFERENCES users(id),
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -212,7 +211,7 @@ CREATE TABLE verification_codes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     phone VARCHAR(20) NOT NULL,
     code VARCHAR(6) NOT NULL,
-    attempts INTEGER DEFAULT 0 CHECK (attempts <= 5), -- Brute-force protection
+    attempts INTEGER DEFAULT 0 CHECK (attempts <= 5), 
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -256,9 +255,7 @@ CREATE TRIGGER transactions_generate_receipt
     FOR EACH ROW EXECUTE FUNCTION generate_receipt_number();
 
 
--- DONNÉES INITIALES
 
--- Admin par défaut (mot de passe : Admin@123)
 INSERT INTO users (id, full_name, phone, password_hash, role, is_phone_verified)
 VALUES (
     uuid_generate_v4(),

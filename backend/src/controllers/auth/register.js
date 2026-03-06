@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
 import Environment from '../../config/environment.js';
 import cloudinary from '../../config/cloudinary.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import twilioService from '../../services/sms/chinguisoft.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
 
 // Upload un fichier sur Cloudinary depuis req.files

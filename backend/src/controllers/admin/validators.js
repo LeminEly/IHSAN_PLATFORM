@@ -1,7 +1,7 @@
 import Validator from '../../models/Validator.js';
 import User from '../../models/User.js';
 import AdminAction from '../../models/AdminAction.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import twilioService from '../../services/sms/chinguisoft.service.js';
 import pushService from '../../services/notification/push.service.js';
 
 export const getPendingValidators = async (req, res) => {

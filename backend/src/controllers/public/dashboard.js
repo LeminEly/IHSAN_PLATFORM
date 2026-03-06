@@ -314,6 +314,19 @@ export const getMapData = async (req, res) => {
       whereClause['$need.location_quarter$'] = quarter;
     }
 
+    // Coordonnées par défaut par quartier (si GPS non saisi)
+    const QUARTER_COORDS = {
+      'arafat':        [18.0532, -15.9421],
+      'sebkha':        [18.0892, -15.9751],
+      'tevragh-zeina': [18.1120, -15.9823],
+      'ksar':          [18.0965, -15.9682],
+      'teyarett':      [18.0821, -15.9612],
+      'toujounine':    [18.0423, -15.9234],
+      'dar-naim':      [18.1231, -15.9543],
+      'riad':          [18.0712, -15.9987],
+      'el-mina':       [18.0634, -16.0123],
+    };
+
     const points = await Transaction.findAll({
       where: whereClause,
       attributes: [
@@ -327,8 +340,8 @@ export const getMapData = async (req, res) => {
       include: [{
         model: Need,
         as: 'need',
-        attributes: [],
-        where: { location_lat: { [Op.ne]: null }, location_lng: { [Op.ne]: null } }
+        attributes: []
+        // ✅ Pas de filtre GPS — les besoins sans coordonnées utilisent le fallback quartier
       }],
       limit: parseInt(limit),
       order: [['confirmed_at', 'DESC']]
@@ -354,14 +367,21 @@ export const getMapData = async (req, res) => {
     res.json({
       success: true,
       data: {
-        points: points.map(p => ({
-          lat: p.dataValues.lat,
-          lng: p.dataValues.lng,
-          quarter: p.dataValues.quarter,
-          title: p.dataValues.title,
-          amount: p.amount,
-          date: p.confirmed_at
-        })),
+        points: points.map(p => {
+          const quarter = (p.dataValues.quarter || '').toLowerCase().trim();
+          const fallback = QUARTER_COORDS[quarter] || [18.0735, -15.9582];
+          const lat = p.dataValues.lat ? parseFloat(p.dataValues.lat) : fallback[0];
+          const lng = p.dataValues.lng ? parseFloat(p.dataValues.lng) : fallback[1];
+          return {
+            lat,
+            lng,
+            quarter: p.dataValues.quarter,
+            title: p.dataValues.title,
+            amount: p.amount,
+            date: p.confirmed_at,
+            has_gps: !!p.dataValues.lat
+          };
+        }),
         quarters: Object.values(quartersMap)
       }
     });

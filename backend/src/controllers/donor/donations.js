@@ -7,7 +7,7 @@ import sequelize from '../../config/database.js';
 import { Op } from 'sequelize';
 import { HashGenerator } from '../../utils/hash.js';
 import polygonService from '../../services/blockchain/polygon.service.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import twilioService from '../../services/sms/chinguisoft.service.js';
 import pushService from '../../services/notification/push.service.js';
 import mobileMoneyService from '../../services/payment/mobile-money.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';

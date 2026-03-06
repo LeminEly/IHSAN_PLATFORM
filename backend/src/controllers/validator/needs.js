@@ -4,7 +4,7 @@ import Validator from '../../models/Validator.js';
 import Beneficiary from '../../models/Beneficiary.js';
 import Transaction from '../../models/Transaction.js';
 import User from '../../models/User.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import twilioService from '../../services/sms/chinguisoft.service.js';
 
 // Convertit une string vide en null pour les champs numériques
 const toFloatOrNull = (val) => (val !== '' && val != null) ? parseFloat(val) : null;
@@ -50,6 +50,14 @@ export const createNeed = async (req, res) => {
       partner_id, beneficiary_description, family_size
     } = req.body;
 
+    // Validation des champs obligatoires
+    if (!title || !estimated_amount || !location_quarter) {
+      return res.status(400).json({ error: 'Titre, montant et quartier sont obligatoires' });
+    }
+    if (!partner_id) {
+      return res.status(400).json({ error: 'Veuillez sélectionner un partenaire' });
+    }
+
     const validator = await Validator.findOne({ where: { user_id: req.user.id } });
     if (!validator || validator.verification_status !== 'approved') {
       return res.status(403).json({
@@ -83,7 +91,7 @@ export const createNeed = async (req, res) => {
       category,
       priority: parseInt(priority) || 1,
       expiry_date: expiry_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'pending'
+      status: 'open'
     });
 
     // Notifier le partenaire (non bloquant)
@@ -103,8 +111,15 @@ export const createNeed = async (req, res) => {
       need
     });
   } catch (error) {
-    console.error('Create need error:', error);
-    res.status(500).json({ error: 'Erreur création besoin' });
+    console.error('Create need error:', error.message, error.name);
+    // Erreur de contrainte DB (ex: partner_id invalide, enum invalide)
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({ error: 'Partenaire invalide ou inexistant' });
+    }
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ error: error.errors?.[0]?.message || 'Données invalides' });
+    }
+    res.status(500).json({ error: 'Erreur création besoin: ' + error.message });
   }
 };
 

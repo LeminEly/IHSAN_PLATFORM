@@ -9,9 +9,8 @@ const requiredEnvVars = [
   'DB_USER',
   'DB_PASSWORD',
   'JWT_SECRET',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
-  'TWILIO_PHONE_NUMBER'
+  'CHINGUIS_VALIDATION_KEY',
+  'CHINGUIS_VALIDATION_TOKEN'
 ];
 
 class Environment {

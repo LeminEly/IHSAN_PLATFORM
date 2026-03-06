@@ -1,7 +1,7 @@
 import Partner from '../../models/Partner.js';
 import User from '../../models/User.js';
 import AdminAction from '../../models/AdminAction.js';
-import twilioService from '../../services/sms/twilio.service.js';
+import twilioService from '../../services/sms/chinguisoft.service.js';
 import pushService from '../../services/notification/push.service.js';
 
 export const getPendingPartners = async (req, res) => {
