@@ -3,6 +3,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import compression from 'compression';
+import morgan from 'morgan';
+import { rateLimit } from 'express-rate-limit';
 
 dotenv.config();
 
@@ -31,6 +35,22 @@ const io = new Server(server, {
 });
 
 // ─── Middlewares ───────────────────────────────────────────
+app.use(helmet());
+app.use(compression());
+app.use(morgan('combined'));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
+});
+
+// Appliquer le limiter à toutes les routes /api
+app.use('/api/', limiter);
+
 app.use(cors({
   origin: Environment.get('CLIENT_URL', 'http://localhost:3000'),
   credentials: true

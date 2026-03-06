@@ -8,10 +8,7 @@ const requiredEnvVars = [
   'DB_NAME',
   'DB_USER',
   'DB_PASSWORD',
-  'JWT_SECRET',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
-  'TWILIO_PHONE_NUMBER'
+  'JWT_SECRET'
 ];
 
 class Environment {
