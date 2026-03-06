@@ -1,6 +1,10 @@
 import express from 'express';
 import { authenticate, requireRole } from '../../middleware/auth.js';
-import { getPartnerOrders, updateOrderStatus, getPartnerStats } from '../../controllers/partner/orders.js';
+import {
+  getPartnerOrders,
+  updateOrderStatus,
+  getPartnerStats,
+} from '../../controllers/partner/orders.js';
 
 const router = express.Router();
 

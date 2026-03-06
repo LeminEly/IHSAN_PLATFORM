@@ -3,7 +3,7 @@ import Validator from '../models/Validator.js';
 export const requireVerifiedValidator = async (req, res, next) => {
   try {
     const validator = await Validator.findOne({
-      where: { user_id: req.user.id }
+      where: { user_id: req.user.id },
     });
 
     if (!validator) {
@@ -12,8 +12,8 @@ export const requireVerifiedValidator = async (req, res, next) => {
 
     if (validator.verification_status !== 'approved') {
       return res.status(403).json({
-        error: 'Votre compte validateur n\'est pas encore approuvé',
-        status: validator.verification_status
+        error: "Votre compte validateur n'est pas encore approuvé",
+        status: validator.verification_status,
       });
     }
 

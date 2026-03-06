@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { validator } from '../../services/api';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { validator } from "../../services/api";
 
 function RegisterBeneficiary() {
   const [formData, setFormData] = useState({
-    description: '',
+    description: "",
     family_size: 1,
-    location_quarter: '',
-    location_lat: '',
-    location_lng: ''
+    location_quarter: "",
+    location_lat: "",
+    location_lng: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
   const navigate = useNavigate();
 
@@ -21,18 +21,20 @@ function RegisterBeneficiary() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       const response = await validator.registerBeneficiary(formData);
       setSuccess({
-        message: 'Bénéficiaire enregistré avec succès',
-        reference_code: response.data.reference_code
+        message: "Bénéficiaire enregistré avec succès",
+        reference_code: response.data.reference_code,
       });
-      setTimeout(() => navigate('/validator'), 3000);
+      setTimeout(() => navigate("/validator"), 3000);
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de l\'enregistrement');
+      setError(
+        error.response?.data?.error || "Erreur lors de l'enregistrement",
+      );
     } finally {
       setLoading(false);
     }
@@ -125,7 +127,7 @@ function RegisterBeneficiary() {
           <div className="flex space-x-4 pt-4">
             <button
               type="button"
-              onClick={() => navigate('/validator')}
+              onClick={() => navigate("/validator")}
               className="btn-secondary flex-1"
             >
               Annuler
@@ -135,7 +137,7 @@ function RegisterBeneficiary() {
               disabled={loading || success}
               className="btn-primary flex-1"
             >
-              {loading ? 'Enregistrement...' : 'Enregistrer'}
+              {loading ? "Enregistrement..." : "Enregistrer"}
             </button>
           </div>
         </form>

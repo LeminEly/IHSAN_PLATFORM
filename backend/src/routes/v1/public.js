@@ -1,5 +1,10 @@
 import express from 'express';
-import { getPublicDashboard, getPublicTransaction, verifyBlockchainProof, getMapData } from '../../controllers/public/dashboard.js';
+import {
+  getPublicDashboard,
+  getPublicTransaction,
+  verifyBlockchainProof,
+  getMapData,
+} from '../../controllers/public/dashboard.js';
 
 const router = express.Router();
 

@@ -35,7 +35,7 @@ const io = new Server(server, {
   }
 });
 
-// ─── Middlewares ───────────────────────────────────────────
+// Middlewares
 app.use(cors({
   origin: Environment.get('CLIENT_URL', 'http://localhost:3000'),
   credentials: true
@@ -46,7 +46,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Rendre io accessible dans les controllers
 app.set('io', io);
 
-// ─── Routes API ────────────────────────────────────────────
+// Routes API 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/validator', validatorRoutes);
@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─── Socket.IO ─────────────────────────────────────────────
+// Socket.IO 
 io.on('connection', (socket) => {
   console.log('Client connecté au dashboard public');
   socket.on('disconnect', () => {
@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ─── Démarrage ─────────────────────────────────────────────
+// Démarrage 
 const PORT = Environment.get('PORT', 5000);
 
 const start = async () => {

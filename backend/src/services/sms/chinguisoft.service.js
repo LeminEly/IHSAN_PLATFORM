@@ -53,16 +53,16 @@ class ChinguisoftService extends SMSInterface {
     const response = await axios.post(url, body, {
       headers: {
         'Validation-token': this.token,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      timeout: 10000
+      timeout: 10000,
     });
 
     // Succès 200 : { code: 654321, balance: 95 }
     return {
       success: true,
       code: response.data.code ? String(response.data.code) : code,
-      balance: response.data.balance ?? null
+      balance: response.data.balance ?? null,
     };
   }
 
@@ -94,7 +94,9 @@ class ChinguisoftService extends SMSInterface {
     try {
       const code = this.generateCode();
       await this._send(validatorPhone, this.defaultLang, code);
-      console.info(`📨 SMS notification (livraison validateur) envoyée à ${validatorPhone} — besoin: ${needTitle}, montant: ${amount} MRU`);
+      console.info(
+        `📨 SMS notification (livraison validateur) envoyée à ${validatorPhone} — besoin: ${needTitle}, montant: ${amount} MRU`,
+      );
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyValidatorDelivery):', this._extractError(error));
@@ -106,7 +108,9 @@ class ChinguisoftService extends SMSInterface {
     try {
       const code = this.generateCode();
       await this._send(donorPhone, this.defaultLang, code);
-      console.info(`📨 SMS notification (livraison donateur) envoyée à ${donorPhone} — besoin: ${needTitle}`);
+      console.info(
+        `📨 SMS notification (livraison donateur) envoyée à ${donorPhone} — besoin: ${needTitle}`,
+      );
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyDonorDelivery):', this._extractError(error));
@@ -118,7 +122,9 @@ class ChinguisoftService extends SMSInterface {
     try {
       const code = this.generateCode();
       await this._send(partnerPhone, this.defaultLang, code);
-      console.info(`📨 SMS notification (nouveau besoin partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, quartier ${quarter}`);
+      console.info(
+        `📨 SMS notification (nouveau besoin partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, quartier ${quarter}`,
+      );
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyPartnerNewNeed):', this._extractError(error));
@@ -130,7 +136,9 @@ class ChinguisoftService extends SMSInterface {
     try {
       const code = this.generateCode();
       await this._send(partnerPhone, this.defaultLang, code);
-      console.info(`📨 SMS notification (paiement partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, donateur: ${donorPhone}`);
+      console.info(
+        `📨 SMS notification (paiement partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, donateur: ${donorPhone}`,
+      );
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyPartnerPayment):', this._extractError(error));
@@ -154,10 +162,26 @@ class ChinguisoftService extends SMSInterface {
     try {
       const code = this.generateCode();
       await this._send(phone, this.defaultLang, code);
-      console.info(`📨 SMS notification (compte rejeté) envoyée à ${phone} — rôle: ${role}, raison: ${reason}`);
+      console.info(
+        `📨 SMS notification (compte rejeté) envoyée à ${phone} — rôle: ${role}, raison: ${reason}`,
+      );
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyAccountRejected):', this._extractError(error));
+      return { success: false };
+    }
+  }
+
+  async notifyAccountSuspended(phone, role, reason) {
+    try {
+      const code = this.generateCode();
+      await this._send(phone, this.defaultLang, code);
+      console.info(
+        `📨 SMS notification (compte suspendu) envoyée à ${phone} — rôle: ${role}, raison: ${reason}`,
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Chinguisoft SMS error (notifyAccountSuspended):', this._extractError(error));
       return { success: false };
     }
   }
@@ -186,12 +210,18 @@ class ChinguisoftService extends SMSInterface {
       const status = error.response.status;
       const data = error.response.data;
       switch (status) {
-        case 401: return `Non autorisé (401) — vérifiez CHINGUIS_VALIDATION_KEY et CHINGUIS_VALIDATION_TOKEN`;
-        case 402: return `Solde insuffisant (402) — balance: ${data?.balance ?? 'N/A'}`;
-        case 422: return `Données invalides (422) — ${JSON.stringify(data?.errors ?? data)}`;
-        case 429: return `Trop de requêtes (429) — ralentissez`;
-        case 503: return `Service indisponible (503) — réessayez plus tard`;
-        default: return `Erreur ${status}: ${JSON.stringify(data)}`;
+        case 401:
+          return `Non autorisé (401) — vérifiez CHINGUIS_VALIDATION_KEY et CHINGUIS_VALIDATION_TOKEN`;
+        case 402:
+          return `Solde insuffisant (402) — balance: ${data?.balance ?? 'N/A'}`;
+        case 422:
+          return `Données invalides (422) — ${JSON.stringify(data?.errors ?? data)}`;
+        case 429:
+          return `Trop de requêtes (429) — ralentissez`;
+        case 503:
+          return `Service indisponible (503) — réessayez plus tard`;
+        default:
+          return `Erreur ${status}: ${JSON.stringify(data)}`;
       }
     }
     return error.message;

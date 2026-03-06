@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
 import Environment from '../../config/environment.js';
 import cloudinary from '../../config/cloudinary.js';
-import twilioService from '../../services/sms/chinguisoft.service.js';
+import smsService from '../../services/sms/chinguisoft.service.js';
 import { validateMauritaniaPhone } from '../../utils/validation.js';
 
 const uploadToCloudinary = async (file, folder) => {
@@ -88,7 +88,7 @@ export const register = async (req, res, next) => {
 
     let code = Math.floor(100000 + Math.random() * 900000).toString();
     try {
-      const result = await twilioService.sendVerificationCode(formattedPhone);
+      const result = await smsService.sendVerificationCode(formattedPhone);
       code = result.code || code;
     } catch (smsError) {
       console.error('SMS error (non-blocking):', smsError.message);
@@ -174,7 +174,7 @@ export const resendCode = async (req, res, next) => {
 
     let code = Math.floor(100000 + Math.random() * 900000).toString();
     try {
-      const result = await twilioService.sendVerificationCode(formattedPhone);
+      const result = await smsService.sendVerificationCode(formattedPhone);
       code = result.code || code;
     } catch (e) {
       if (Environment.isDevelopment())

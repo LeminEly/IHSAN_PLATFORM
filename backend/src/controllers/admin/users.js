@@ -14,14 +14,14 @@ export const getAdminStats = async (req, res) => {
       pendingPartners,
       totalTransactions,
       totalDonations,
-      completedNeeds
+      completedNeeds,
     ] = await Promise.all([
       User.count({ where: { is_active: true } }),
       Validator.count({ where: { verification_status: 'pending' } }),
       Partner.count({ where: { verification_status: 'pending' } }),
       Transaction.count({ where: { status: 'confirmed' } }),
       Transaction.sum('amount', { where: { status: 'confirmed' } }),
-      Need.count({ where: { status: 'completed' } })
+      Need.count({ where: { status: 'completed' } }),
     ]);
 
     res.json({
@@ -30,7 +30,7 @@ export const getAdminStats = async (req, res) => {
       pending_partners: pendingPartners,
       total_transactions: totalTransactions,
       total_donations: totalDonations || 0,
-      completed_needs: completedNeeds
+      completed_needs: completedNeeds,
     });
   } catch (error) {
     console.error('Get admin stats error:', error);
@@ -50,7 +50,7 @@ export const getUsers = async (req, res) => {
       attributes: { exclude: ['password_hash', 'refresh_token'] },
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
 
     res.json({ total: count, users: rows });
@@ -84,7 +84,7 @@ export const suspendUser = async (req, res) => {
       admin_id: req.user.id,
       action_type: 'suspend_user',
       target_user_id: userId,
-      reason
+      reason,
     });
 
     res.json({ message: 'Utilisateur suspendu', user });
@@ -110,7 +110,7 @@ export const activateUser = async (req, res) => {
       admin_id: req.user.id,
       action_type: 'activate_user',
       target_user_id: userId,
-      reason: reason || 'Réactivation manuelle'
+      reason: reason || 'Réactivation manuelle',
     });
 
     res.json({ message: 'Utilisateur activé', user });

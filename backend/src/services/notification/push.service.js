@@ -3,13 +3,12 @@ import Environment from '../../config/environment.js';
 
 class PushNotificationService {
   constructor() {
-    // Créer le client avec appId et REST API Key
     this.client = new OneSignal.Client({
       userAuthKey: Environment.get('ONESIGNAL_REST_API_KEY'),
       app: {
         appAuthKey: Environment.get('ONESIGNAL_REST_API_KEY'),
-        appId: Environment.get('ONESIGNAL_APP_ID')
-      }
+        appId: Environment.get('ONESIGNAL_APP_ID'),
+      },
     });
   }
 
@@ -21,7 +20,7 @@ class PushNotificationService {
         headings: { fr: notification.title },
         contents: { fr: notification.body },
         data: notification.data,
-        priority: 10 
+        priority: 10,
       });
       return response;
     } catch (error) {
@@ -41,7 +40,7 @@ class PushNotificationService {
         filters: [{ field: 'tag', key: 'role', relation: '=', value: role }],
         headings: { en: notification.title },
         contents: { en: notification.body },
-        data: notification.data
+        data: notification.data,
       });
       return response;
     } catch (error) {

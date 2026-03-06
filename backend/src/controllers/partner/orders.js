@@ -19,17 +19,23 @@ export const getPartnerOrders = async (req, res) => {
       where,
       include: [
         {
-          model: Transaction, as: 'transaction', required: false,
-          include: [{ model: User, as: 'donor', attributes: ['full_name'] }]
+          model: Transaction,
+          as: 'transaction',
+          required: false,
+          include: [{ model: User, as: 'donor', attributes: ['full_name'] }],
         },
         {
-          model: Beneficiary, as: 'beneficiary',
-          attributes: ['reference_code', 'description', 'family_size']
-        }
+          model: Beneficiary,
+          as: 'beneficiary',
+          attributes: ['reference_code', 'description', 'family_size'],
+        },
       ],
-      order: [['status', 'ASC'], ['created_at', 'DESC']],
+      order: [
+        ['status', 'ASC'],
+        ['created_at', 'DESC'],
+      ],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
 
     res.json({ total: needs.count, orders: needs.rows });
@@ -72,7 +78,7 @@ export const getPartnerStats = async (req, res) => {
       Need.count({ where: { partner_id: partner.id, status: 'open' } }),
       Need.count({ where: { partner_id: partner.id, status: 'funded' } }),
       Need.count({ where: { partner_id: partner.id, status: 'completed' } }),
-      Transaction.sum('amount', { where: { partner_id: partner.id, status: 'confirmed' } })
+      Transaction.sum('amount', { where: { partner_id: partner.id, status: 'confirmed' } }),
     ]);
 
     res.json({
@@ -81,7 +87,7 @@ export const getPartnerStats = async (req, res) => {
       open_orders: open,
       funded_orders: funded,
       completed_orders: completed,
-      total_amount: total_amount || 0
+      total_amount: total_amount || 0,
     });
   } catch (error) {
     console.error('Get partner stats error:', error);

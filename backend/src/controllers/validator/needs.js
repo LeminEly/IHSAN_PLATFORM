@@ -4,10 +4,9 @@ import Validator from '../../models/Validator.js';
 import Beneficiary from '../../models/Beneficiary.js';
 import Transaction from '../../models/Transaction.js';
 import User from '../../models/User.js';
-import twilioService from '../../services/sms/chinguisoft.service.js';
+import smsService from '../../services/sms/chinguisoft.service.js';
 
-// Convertit une string vide en null pour les champs numériques
-const toFloatOrNull = (val) => (val !== '' && val != null) ? parseFloat(val) : null;
+const toFloatOrNull = (val) => (val !== '' && val != null ? parseFloat(val) : null);
 
 export const getValidatorStats = async (req, res) => {
   try {
@@ -15,9 +14,14 @@ export const getValidatorStats = async (req, res) => {
 
     if (!validator) {
       return res.json({
-        reputation: 0, total_deliveries: 0, success_rate: 0,
-        pending_needs: 0, open_needs: 0, funded_needs: 0, completed_needs: 0,
-        verification_status: 'not_found'
+        reputation: 0,
+        total_deliveries: 0,
+        success_rate: 0,
+        pending_needs: 0,
+        open_needs: 0,
+        funded_needs: 0,
+        completed_needs: 0,
+        verification_status: 'not_found',
       });
     }
 
@@ -25,7 +29,7 @@ export const getValidatorStats = async (req, res) => {
       Need.count({ where: { validator_id: req.user.id, status: 'pending' } }),
       Need.count({ where: { validator_id: req.user.id, status: 'open' } }),
       Need.count({ where: { validator_id: req.user.id, status: 'funded' } }),
-      Need.count({ where: { validator_id: req.user.id, status: 'completed' } })
+      Need.count({ where: { validator_id: req.user.id, status: 'completed' } }),
     ]);
 
     res.json({
@@ -33,8 +37,10 @@ export const getValidatorStats = async (req, res) => {
       total_deliveries: validator.total_deliveries || 0,
       success_rate: validator.success_rate || 0,
       verification_status: validator.verification_status,
-      pending_needs: pending, open_needs: open,
-      funded_needs: funded, completed_needs: completed
+      pending_needs: pending,
+      open_needs: open,
+      funded_needs: funded,
+      completed_needs: completed,
     });
   } catch (error) {
     console.error('Get validator stats error:', error);
@@ -45,9 +51,18 @@ export const getValidatorStats = async (req, res) => {
 export const createNeed = async (req, res) => {
   try {
     const {
-      title, description, estimated_amount, location_quarter,
-      location_lat, location_lng, category, priority, expiry_date,
-      partner_id, beneficiary_description, family_size
+      title,
+      description,
+      estimated_amount,
+      location_quarter,
+      location_lat,
+      location_lng,
+      category,
+      priority,
+      expiry_date,
+      partner_id,
+      beneficiary_description,
+      family_size,
     } = req.body;
 
     // Validation des champs obligatoires
@@ -61,11 +76,10 @@ export const createNeed = async (req, res) => {
     const validator = await Validator.findOne({ where: { user_id: req.user.id } });
     if (!validator || validator.verification_status !== 'approved') {
       return res.status(403).json({
-        error: 'Vous devez être un validateur approuvé pour créer un besoin'
+        error: 'Vous devez être un validateur approuvé pour créer un besoin',
       });
     }
 
-    // Convertir les coordonnées — string vide → null (PostgreSQL refuse '' pour numeric)
     const lat = toFloatOrNull(location_lat);
     const lng = toFloatOrNull(location_lng);
 
@@ -76,14 +90,15 @@ export const createNeed = async (req, res) => {
       family_size: parseInt(family_size) || 1,
       location_quarter,
       location_lat: lat,
-      location_lng: lng
+      location_lng: lng,
     });
 
     const need = await Need.create({
       validator_id: req.user.id,
       partner_id: partner_id || null,
       beneficiary_id: beneficiary.id,
-      title, description,
+      title,
+      description,
       estimated_amount: parseFloat(estimated_amount),
       location_quarter,
       location_lat: lat,
@@ -91,7 +106,7 @@ export const createNeed = async (req, res) => {
       category,
       priority: parseInt(priority) || 1,
       expiry_date: expiry_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'open'
+      status: 'open',
     });
 
     // Notifier le partenaire (non bloquant)
@@ -99,20 +114,24 @@ export const createNeed = async (req, res) => {
       try {
         const partner = await Partner.findByPk(partner_id);
         if (partner) {
-          await twilioService.notifyPartnerNewNeed(
-            partner.payment_phone, title, estimated_amount, location_quarter
+          await smsService.notifyPartnerNewNeed(
+            partner.payment_phone,
+            title,
+            estimated_amount,
+            location_quarter,
           );
         }
-      } catch (e) { console.error('SMS error:', e.message); }
+      } catch (e) {
+        console.error('SMS error:', e.message);
+      }
     }
 
     res.status(201).json({
       message: 'Besoin créé avec succès. En attente de validation admin.',
-      need
+      need,
     });
   } catch (error) {
     console.error('Create need error:', error.message, error.name);
-    // Erreur de contrainte DB (ex: partner_id invalide, enum invalide)
     if (error.name === 'SequelizeForeignKeyConstraintError') {
       return res.status(400).json({ error: 'Partenaire invalide ou inexistant' });
     }
@@ -129,9 +148,13 @@ export const getMyNeeds = async (req, res) => {
       where: { validator_id: req.user.id },
       include: [
         { model: Partner, as: 'partner', attributes: ['business_name', 'payment_phone'] },
-        { model: Beneficiary, as: 'beneficiary', attributes: ['reference_code', 'description', 'family_size'] }
+        {
+          model: Beneficiary,
+          as: 'beneficiary',
+          attributes: ['reference_code', 'description', 'family_size'],
+        },
       ],
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
     });
     res.json(needs);
   } catch (error) {
@@ -146,13 +169,15 @@ export const getNeedsToConfirm = async (req, res) => {
       where: { validator_id: req.user.id, status: 'funded' },
       include: [
         {
-          model: Transaction, as: 'transaction', required: true,
-          include: [{ model: User, as: 'donor', attributes: ['full_name', 'phone'] }]
+          model: Transaction,
+          as: 'transaction',
+          required: true,
+          include: [{ model: User, as: 'donor', attributes: ['full_name', 'phone'] }],
         },
         { model: Partner, as: 'partner', attributes: ['business_name', 'address'] },
-        { model: Beneficiary, as: 'beneficiary' }
+        { model: Beneficiary, as: 'beneficiary' },
       ],
-      order: [['created_at', 'ASC']]
+      order: [['created_at', 'ASC']],
     });
     res.json(needs);
   } catch (error) {

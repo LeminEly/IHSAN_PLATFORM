@@ -16,7 +16,7 @@ export const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
 
   if (err.name === 'SequelizeValidationError') {
-    const message = err.errors.map(e => e.message).join(', ');
+    const message = err.errors.map((e) => e.message).join(', ');
     error = new AppError(message, 400);
   }
 
@@ -34,6 +34,6 @@ export const errorHandler = (err, req, res, next) => {
 
   res.status(error.statusCode || 500).json({
     error: error.message || 'Erreur interne du serveur',
-    ...(Environment.isDevelopment() && { stack: err.stack })
+    ...(Environment.isDevelopment() && { stack: err.stack }),
   });
 };

@@ -1,8 +1,23 @@
 import express from 'express';
 import { authenticate, requireRole } from '../../middleware/auth.js';
-import { getPendingValidators, approveValidator, rejectValidator, suspendValidator } from '../../controllers/admin/validators.js';
-import { getPendingPartners, approvePartner, rejectPartner, recordSiteVisit } from '../../controllers/admin/partners.js';
-import { getAdminStats, getUsers, suspendUser, activateUser } from '../../controllers/admin/users.js';
+import {
+  getPendingValidators,
+  approveValidator,
+  rejectValidator,
+  suspendValidator,
+} from '../../controllers/admin/validators.js';
+import {
+  getPendingPartners,
+  approvePartner,
+  rejectPartner,
+  recordSiteVisit,
+} from '../../controllers/admin/partners.js';
+import {
+  getAdminStats,
+  getUsers,
+  suspendUser,
+  activateUser,
+} from '../../controllers/admin/users.js';
 
 const router = express.Router();
 router.use(authenticate, requireRole('admin'));
@@ -10,7 +25,7 @@ router.use(authenticate, requireRole('admin'));
 // Stats
 router.get('/stats', getAdminStats);
 
-// Users — route manquante ajoutée
+// Users
 router.get('/users', getUsers);
 router.put('/users/:userId/suspend', suspendUser);
 router.put('/users/:userId/activate', activateUser);

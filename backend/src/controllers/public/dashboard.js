@@ -11,14 +11,15 @@ import { GeolocationUtils } from '../../utils/geolocation.js';
 
 const getGlobalStats = async () => {
   try {
-    const [totalDonations, totalTransactions, totalNeeds, validators, partners, quarters] = await Promise.all([
-      Transaction.sum('amount', { where: { status: 'confirmed' } }),
-      Transaction.count({ where: { status: 'confirmed' } }),
-      Need.count({ where: { status: 'completed' } }),
-      Validator.count({ where: { verification_status: 'approved' } }),
-      Partner.count({ where: { verification_status: 'approved' } }),
-      Need.count({ where: { status: 'completed' }, distinct: true, col: 'location_quarter' })
-    ]);
+    const [totalDonations, totalTransactions, totalNeeds, validators, partners, quarters] =
+      await Promise.all([
+        Transaction.sum('amount', { where: { status: 'confirmed' } }),
+        Transaction.count({ where: { status: 'confirmed' } }),
+        Need.count({ where: { status: 'completed' } }),
+        Validator.count({ where: { verification_status: 'approved' } }),
+        Partner.count({ where: { verification_status: 'approved' } }),
+        Need.count({ where: { status: 'completed' }, distinct: true, col: 'location_quarter' }),
+      ]);
 
     return {
       total_donations: totalDonations || 0,
@@ -26,7 +27,7 @@ const getGlobalStats = async () => {
       total_needs: totalNeeds || 0,
       active_validators: validators || 0,
       active_partners: partners || 0,
-      quarters_covered: quarters || 0
+      quarters_covered: quarters || 0,
     };
   } catch (error) {
     return {
@@ -35,7 +36,7 @@ const getGlobalStats = async () => {
       total_needs: 0,
       active_validators: 0,
       active_partners: 0,
-      quarters_covered: 0
+      quarters_covered: 0,
     };
   }
 };
@@ -52,11 +53,15 @@ export const getPublicDashboard = async (req, res) => {
     }
 
     if (lat && lng) {
-      const box = GeolocationUtils.getBoundingBox(parseFloat(lat), parseFloat(lng), parseFloat(radius));
+      const box = GeolocationUtils.getBoundingBox(
+        parseFloat(lat),
+        parseFloat(lng),
+        parseFloat(radius),
+      );
       whereClause = {
         ...whereClause,
         '$need.location_lat$': { [Op.between]: [box.minLat, box.maxLat] },
-        '$need.location_lng$': { [Op.between]: [box.minLng, box.maxLng] }
+        '$need.location_lng$': { [Op.between]: [box.minLng, box.maxLng] },
       };
     }
 
@@ -67,33 +72,46 @@ export const getPublicDashboard = async (req, res) => {
           model: Need,
           as: 'need',
           required: true,
-          attributes: ['id', 'title', 'description', 'location_quarter', 'location_lat', 'location_lng', 'category', 'created_at'],
-          include: [{
-            model: User,
-            as: 'validator',
-            attributes: ['full_name'],
-            include: [{
-              model: Validator,
+          attributes: [
+            'id',
+            'title',
+            'description',
+            'location_quarter',
+            'location_lat',
+            'location_lng',
+            'category',
+            'created_at',
+          ],
+          include: [
+            {
+              model: User,
               as: 'validator',
-              attributes: ['reputation_score', 'total_deliveries']
-            }]
-          }]
+              attributes: ['full_name'],
+              include: [
+                {
+                  model: Validator,
+                  as: 'validator',
+                  attributes: ['reputation_score', 'total_deliveries'],
+                },
+              ],
+            },
+          ],
         },
         {
           model: ImpactProof,
           as: 'impact_proof',
           attributes: ['media_url', 'thumbnail_url', 'proof_type', 'uploaded_at'],
-          required: false
+          required: false,
         },
         {
           model: Partner,
           as: 'partner',
-          attributes: ['business_name', 'payment_operator']
-        }
+          attributes: ['business_name', 'payment_operator'],
+        },
       ],
       order: [['confirmed_at', 'DESC']],
       limit: parseInt(limit),
-      offset: offset
+      offset: offset,
     });
 
     let blockchainTransactions = [];
@@ -108,12 +126,12 @@ export const getPublicDashboard = async (req, res) => {
     const activeQuarters = await Need.findAll({
       attributes: [
         [sequelize.fn('DISTINCT', sequelize.col('location_quarter')), 'quarter'],
-        [sequelize.fn('COUNT', sequelize.col('id')), 'needs_count']
+        [sequelize.fn('COUNT', sequelize.col('id')), 'needs_count'],
       ],
       where: { status: 'completed' },
       group: ['location_quarter'],
       order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
-      limit: 20
+      limit: 20,
     });
 
     const mapPoints = await Transaction.findAll({
@@ -124,16 +142,18 @@ export const getPublicDashboard = async (req, res) => {
         [sequelize.col('need.location_quarter'), 'quarter'],
         [sequelize.col('need.title'), 'title'],
         'amount',
-        'confirmed_at'
+        'confirmed_at',
       ],
-      include: [{
-        model: Need,
-        as: 'need',
-        attributes: [],
-        where: { location_lat: { [Op.ne]: null }, location_lng: { [Op.ne]: null } }
-      }],
+      include: [
+        {
+          model: Need,
+          as: 'need',
+          attributes: [],
+          where: { location_lat: { [Op.ne]: null }, location_lng: { [Op.ne]: null } },
+        },
+      ],
       limit: 500,
-      order: [['confirmed_at', 'DESC']]
+      order: [['confirmed_at', 'DESC']],
     });
 
     res.json({
@@ -146,9 +166,9 @@ export const getPublicDashboard = async (req, res) => {
           active_validators: stats.active_validators,
           active_partners: stats.active_partners,
           quarters_covered: stats.quarters_covered,
-          last_update: new Date().toISOString()
+          last_update: new Date().toISOString(),
         },
-        transactions: transactions.map(t => ({
+        transactions: transactions.map((t) => ({
           id: t.id,
           amount: t.amount,
           date: t.confirmed_at,
@@ -158,46 +178,53 @@ export const getPublicDashboard = async (req, res) => {
             title: t.need.title,
             quarter: t.need.location_quarter,
             category: t.need.category,
-            location: t.need.location_lat && t.need.location_lng ? {
-              lat: t.need.location_lat,
-              lng: t.need.location_lng
-            } : null
+            location:
+              t.need.location_lat && t.need.location_lng
+                ? {
+                    lat: t.need.location_lat,
+                    lng: t.need.location_lng,
+                  }
+                : null,
           },
           validator: {
             name: t.need.validator?.full_name,
-            reputation: t.need.validator?.validator?.reputation_score || 0
+            reputation: t.need.validator?.validator?.reputation_score || 0,
           },
           partner: {
-            name: t.partner?.business_name
+            name: t.partner?.business_name,
           },
-          proof: t.impact_proof ? {
-            image: t.impact_proof.thumbnail_url || t.impact_proof.media_url,
-            date: t.impact_proof.uploaded_at
-          } : null,
-          blockchain: t.blockchain_explorer_url ? {
-            url: t.blockchain_explorer_url,
-            hash: t.blockchain_tx_hash
-          } : null
+          proof: t.impact_proof
+            ? {
+                image: t.impact_proof.thumbnail_url || t.impact_proof.media_url,
+                date: t.impact_proof.uploaded_at,
+              }
+            : null,
+          blockchain: t.blockchain_explorer_url
+            ? {
+                url: t.blockchain_explorer_url,
+                hash: t.blockchain_tx_hash,
+              }
+            : null,
         })),
         blockchain_transactions: blockchainTransactions,
-        map_points: mapPoints.map(p => ({
+        map_points: mapPoints.map((p) => ({
           lat: p.dataValues.lat,
           lng: p.dataValues.lng,
           quarter: p.dataValues.quarter,
           title: p.dataValues.title,
           amount: p.amount,
-          date: p.confirmed_at
+          date: p.confirmed_at,
         })),
         filters: {
-          quarters: activeQuarters.map(q => ({
+          quarters: activeQuarters.map((q) => ({
             name: q.dataValues.quarter,
-            count: parseInt(q.dataValues.needs_count)
+            count: parseInt(q.dataValues.needs_count),
           })),
           total_pages: Math.ceil(count / parseInt(limit)),
           current_page: parseInt(page),
-          total_transactions: count
-        }
-      }
+          total_transactions: count,
+        },
+      },
     });
   } catch (error) {
     console.error('Dashboard error:', error);
@@ -217,12 +244,20 @@ export const getPublicTransaction = async (req, res) => {
           as: 'need',
           include: [
             { model: User, as: 'validator', attributes: ['full_name'] },
-            { model: Beneficiary, as: 'beneficiary', attributes: ['reference_code', 'description', 'family_size'] }
-          ]
+            {
+              model: Beneficiary,
+              as: 'beneficiary',
+              attributes: ['reference_code', 'description', 'family_size'],
+            },
+          ],
         },
-        { model: ImpactProof, as: 'impact_proof', attributes: ['media_url', 'proof_type', 'uploaded_at'] },
-        { model: Partner, as: 'partner', attributes: ['business_name'] }
-      ]
+        {
+          model: ImpactProof,
+          as: 'impact_proof',
+          attributes: ['media_url', 'proof_type', 'uploaded_at'],
+        },
+        { model: Partner, as: 'partner', attributes: ['business_name'] },
+      ],
     });
 
     if (!transaction) {
@@ -245,27 +280,31 @@ export const getPublicTransaction = async (req, res) => {
           title: transaction.need.title,
           description: transaction.need.description,
           quarter: transaction.need.location_quarter,
-          category: transaction.need.category
+          category: transaction.need.category,
         },
         validator: { name: transaction.need.validator.full_name },
         partner: { name: transaction.partner.business_name },
-        beneficiary: transaction.need.beneficiary ? {
-          code: transaction.need.beneficiary.reference_code,
-          description: transaction.need.beneficiary.description,
-          family_size: transaction.need.beneficiary.family_size
-        } : null,
-        proof: transaction.impact_proof ? {
-          image: transaction.impact_proof.media_url,
-          type: transaction.impact_proof.proof_type,
-          date: transaction.impact_proof.uploaded_at
-        } : null,
+        beneficiary: transaction.need.beneficiary
+          ? {
+              code: transaction.need.beneficiary.reference_code,
+              description: transaction.need.beneficiary.description,
+              family_size: transaction.need.beneficiary.family_size,
+            }
+          : null,
+        proof: transaction.impact_proof
+          ? {
+              image: transaction.impact_proof.media_url,
+              type: transaction.impact_proof.proof_type,
+              date: transaction.impact_proof.uploaded_at,
+            }
+          : null,
         blockchain: {
           hash: transaction.blockchain_hash,
           tx_hash: transaction.blockchain_tx_hash,
           url: transaction.blockchain_explorer_url,
-          verified: blockchainVerification?.verified || false
-        }
-      }
+          verified: blockchainVerification?.verified || false,
+        },
+      },
     });
   } catch (error) {
     console.error('Transaction detail error:', error);
@@ -280,7 +319,7 @@ export const verifyBlockchainProof = async (req, res) => {
 
     const transaction = await Transaction.findOne({
       where: { blockchain_hash: hash },
-      include: [{ model: Need, as: 'need', attributes: ['title', 'location_quarter'] }]
+      include: [{ model: Need, as: 'need', attributes: ['title', 'location_quarter'] }],
     });
 
     res.json({
@@ -288,16 +327,20 @@ export const verifyBlockchainProof = async (req, res) => {
       data: {
         verified: verification.verified,
         hash: hash,
-        transaction: transaction ? {
-          id: transaction.id,
-          amount: transaction.amount,
-          date: transaction.confirmed_at,
-          need: transaction.need ? {
-            title: transaction.need.title,
-            quarter: transaction.need.location_quarter
-          } : null
-        } : null
-      }
+        transaction: transaction
+          ? {
+              id: transaction.id,
+              amount: transaction.amount,
+              date: transaction.confirmed_at,
+              need: transaction.need
+                ? {
+                    title: transaction.need.title,
+                    quarter: transaction.need.location_quarter,
+                  }
+                : null,
+            }
+          : null,
+      },
     });
   } catch (error) {
     console.error('Verify error:', error);
@@ -316,15 +359,15 @@ export const getMapData = async (req, res) => {
 
     // Coordonnées par défaut par quartier (si GPS non saisi)
     const QUARTER_COORDS = {
-      'arafat':        [18.0532, -15.9421],
-      'sebkha':        [18.0892, -15.9751],
-      'tevragh-zeina': [18.1120, -15.9823],
-      'ksar':          [18.0965, -15.9682],
-      'teyarett':      [18.0821, -15.9612],
-      'toujounine':    [18.0423, -15.9234],
-      'dar-naim':      [18.1231, -15.9543],
-      'riad':          [18.0712, -15.9987],
-      'el-mina':       [18.0634, -16.0123],
+      arafat: [18.0532, -15.9421],
+      sebkha: [18.0892, -15.9751],
+      'tevragh-zeina': [18.112, -15.9823],
+      ksar: [18.0965, -15.9682],
+      teyarett: [18.0821, -15.9612],
+      toujounine: [18.0423, -15.9234],
+      'dar-naim': [18.1231, -15.9543],
+      riad: [18.0712, -15.9987],
+      'el-mina': [18.0634, -16.0123],
     };
 
     const points = await Transaction.findAll({
@@ -335,20 +378,22 @@ export const getMapData = async (req, res) => {
         [sequelize.col('need.location_quarter'), 'quarter'],
         [sequelize.col('need.title'), 'title'],
         'amount',
-        'confirmed_at'
+        'confirmed_at',
       ],
-      include: [{
-        model: Need,
-        as: 'need',
-        attributes: []
-        // ✅ Pas de filtre GPS — les besoins sans coordonnées utilisent le fallback quartier
-      }],
+      include: [
+        {
+          model: Need,
+          as: 'need',
+          attributes: [],
+          // Pas de filtre GPS — les besoins sans coordonnées utilisent le fallback quartier
+        },
+      ],
       limit: parseInt(limit),
-      order: [['confirmed_at', 'DESC']]
+      order: [['confirmed_at', 'DESC']],
     });
 
     const quartersMap = {};
-    points.forEach(p => {
+    points.forEach((p) => {
       const quarter = p.dataValues.quarter;
       if (!quartersMap[quarter]) {
         quartersMap[quarter] = { name: quarter, count: 0, total_amount: 0, points: [] };
@@ -360,14 +405,14 @@ export const getMapData = async (req, res) => {
         lng: p.dataValues.lng,
         amount: p.amount,
         date: p.confirmed_at,
-        title: p.dataValues.title
+        title: p.dataValues.title,
       });
     });
 
     res.json({
       success: true,
       data: {
-        points: points.map(p => {
+        points: points.map((p) => {
           const quarter = (p.dataValues.quarter || '').toLowerCase().trim();
           const fallback = QUARTER_COORDS[quarter] || [18.0735, -15.9582];
           const lat = p.dataValues.lat ? parseFloat(p.dataValues.lat) : fallback[0];
@@ -379,11 +424,11 @@ export const getMapData = async (req, res) => {
             title: p.dataValues.title,
             amount: p.amount,
             date: p.confirmed_at,
-            has_gps: !!p.dataValues.lat
+            has_gps: !!p.dataValues.lat,
           };
         }),
-        quarters: Object.values(quartersMap)
-      }
+        quarters: Object.values(quartersMap),
+      },
     });
   } catch (error) {
     console.error('Map error:', error);

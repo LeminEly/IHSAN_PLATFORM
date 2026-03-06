@@ -3,7 +3,12 @@ import { authenticate, requireRole } from '../../middleware/auth.js';
 import { requireVerifiedValidator } from '../../middleware/validator.js';
 import { upload } from '../../middleware/upload.js';
 import { validate, needValidator } from '../../middleware/validation.js';
-import { createNeed, getMyNeeds, getNeedsToConfirm, getValidatorStats } from '../../controllers/validator/needs.js';
+import {
+  createNeed,
+  getMyNeeds,
+  getNeedsToConfirm,
+  getValidatorStats,
+} from '../../controllers/validator/needs.js';
 import { confirmDelivery, registerBeneficiary } from '../../controllers/validator/delivery.js';
 import Partner from '../../models/Partner.js';
 
@@ -22,15 +27,14 @@ router.post(
   '/needs/:needId/confirm',
   requireVerifiedValidator,
   upload.single('proof_photo'),
-  confirmDelivery
+  confirmDelivery,
 );
 
-// Liste des partenaires approuvés (pour le formulaire CreateNeed)
 router.get('/partners', async (req, res) => {
   try {
     const partners = await Partner.findAll({
       where: { verification_status: 'approved' },
-      attributes: ['id', 'business_name', 'address', 'payment_phone', 'payment_operator']
+      attributes: ['id', 'business_name', 'address', 'payment_phone', 'payment_operator'],
     });
     res.json(partners);
   } catch (error) {

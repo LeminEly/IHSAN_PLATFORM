@@ -11,11 +11,11 @@ class MobileMoneyService {
     Référence: TXN-${Date.now()}
     ===============================
     `);
-    
+
     return {
       success: true,
       reference: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -24,7 +24,7 @@ class MobileMoneyService {
     return {
       verified: true,
       reference,
-      status: 'completed'
+      status: 'completed',
     };
   }
 }

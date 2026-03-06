@@ -10,12 +10,12 @@ const requiredEnvVars = [
   'DB_PASSWORD',
   'JWT_SECRET',
   'CHINGUIS_VALIDATION_KEY',
-  'CHINGUIS_VALIDATION_TOKEN'
+  'CHINGUIS_VALIDATION_TOKEN',
 ];
 
 class Environment {
   static validate() {
-    const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+    const missing = requiredEnvVars.filter((envVar) => !process.env[envVar]);
     if (missing.length > 0) {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }

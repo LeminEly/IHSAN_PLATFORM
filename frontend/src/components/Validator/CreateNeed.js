@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { validator } from '../../services/api';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { validator } from "../../services/api";
 
 function CreateNeed() {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    estimated_amount: '',
-    location_quarter: '',
-    location_lat: '',
-    location_lng: '',
-    category: 'iftar_meal',
+    title: "",
+    description: "",
+    estimated_amount: "",
+    location_quarter: "",
+    location_lat: "",
+    location_lng: "",
+    category: "iftar_meal",
     priority: 1,
-    partner_id: '',
-    beneficiary_description: '',
-    family_size: 1
+    partner_id: "",
+    beneficiary_description: "",
+    family_size: 1,
   });
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
@@ -32,7 +32,7 @@ function CreateNeed() {
       const response = await validator.getPartners();
       setPartners(response.data);
     } catch (error) {
-      console.error('Error loading partners:', error);
+      console.error("Error loading partners:", error);
     }
   };
 
@@ -44,18 +44,20 @@ function CreateNeed() {
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           location_lat: pos.coords.latitude.toFixed(6),
-          location_lng: pos.coords.longitude.toFixed(6)
+          location_lng: pos.coords.longitude.toFixed(6),
         }));
         setGpsLoading(false);
       },
       (err) => {
-        setError("Impossible d'obtenir votre position. Veuillez saisir manuellement.");
+        setError(
+          "Impossible d'obtenir votre position. Veuillez saisir manuellement.",
+        );
         setGpsLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -65,35 +67,38 @@ function CreateNeed() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       await validator.createNeed(formData);
       setSuccess(true);
-      setTimeout(() => navigate('/validator'), 2000);
+      setTimeout(() => navigate("/validator"), 2000);
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de la création');
+      setError(error.response?.data?.error || "Erreur lors de la création");
     } finally {
       setLoading(false);
     }
   };
 
   const categories = [
-    { value: 'iftar_meal', label: '🍽️ Repas Iftar', icon: '🍽️' },
-    { value: 'food_basket', label: '🧺 Panier alimentaire', icon: '🧺' },
-    { value: 'clothing', label: '👕 Vêtements', icon: '👕' },
-    { value: 'medical', label: '💊 Médical', icon: '💊' },
-    { value: 'other', label: '📦 Autre', icon: '📦' }
+    { value: "iftar_meal", label: "🍽️ Repas Iftar", icon: "🍽️" },
+    { value: "food_basket", label: "🧺 Panier alimentaire", icon: "🧺" },
+    { value: "clothing", label: "👕 Vêtements", icon: "👕" },
+    { value: "medical", label: "💊 Médical", icon: "💊" },
+    { value: "other", label: "📦 Autre", icon: "📦" },
   ];
 
   return (
     <div className="max-w-3xl mx-auto">
       {/* En-tête */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-secondary-900">Créer un nouveau besoin</h1>
+        <h1 className="text-3xl font-bold text-secondary-900">
+          Créer un nouveau besoin
+        </h1>
         <p className="text-secondary-500 mt-2">
-          Remplissez ce formulaire pour enregistrer un besoin que vous avez identifié sur le terrain
+          Remplissez ce formulaire pour enregistrer un besoin que vous avez
+          identifié sur le terrain
         </p>
       </div>
 
@@ -101,8 +106,18 @@ function CreateNeed() {
       {success && (
         <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl flex items-center">
           <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-4">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            <svg
+              className="w-6 h-6 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <div>
@@ -122,7 +137,7 @@ function CreateNeed() {
             </span>
             Informations du besoin
           </h2>
-          
+
           <div className="space-y-4">
             <div>
               <label className="input-label">Titre du besoin</label>
@@ -163,7 +178,9 @@ function CreateNeed() {
                     min="1"
                     required
                   />
-                  <span className="absolute left-3 top-3 text-secondary-500">MRU</span>
+                  <span className="absolute left-3 top-3 text-secondary-500">
+                    MRU
+                  </span>
                 </div>
               </div>
 
@@ -175,8 +192,10 @@ function CreateNeed() {
                   onChange={handleChange}
                   className="input"
                 >
-                  {categories.map(c => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
+                  {categories.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -185,15 +204,15 @@ function CreateNeed() {
             <div>
               <label className="input-label">Priorité</label>
               <div className="flex space-x-2">
-                {[1, 2, 3, 4, 5].map(p => (
+                {[1, 2, 3, 4, 5].map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setFormData({ ...formData, priority: p })}
                     className={`flex-1 py-2 rounded-lg border transition-all ${
                       formData.priority === p
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white text-secondary-600 border-secondary-200 hover:border-primary-300'
+                        ? "bg-primary-600 text-white border-primary-600"
+                        : "bg-white text-secondary-600 border-secondary-200 hover:border-primary-300"
                     }`}
                   >
                     {p}
@@ -212,7 +231,7 @@ function CreateNeed() {
             </span>
             Localisation
           </h2>
-          
+
           <div className="space-y-4">
             <div>
               <label className="input-label">Quartier</label>
@@ -247,7 +266,7 @@ function CreateNeed() {
                   placeholder="Longitude"
                 />
               </div>
-              
+
               <button
                 type="button"
                 onClick={getGPS}
@@ -261,9 +280,24 @@ function CreateNeed() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <svg
+                      className="w-4 h-4 mr-2 inline"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
                     </svg>
                     Utiliser ma position GPS
                   </>
@@ -281,7 +315,7 @@ function CreateNeed() {
             </span>
             Bénéficiaire (anonyme)
           </h2>
-          
+
           <div className="space-y-4">
             <div>
               <label className="input-label">Description</label>
@@ -317,9 +351,9 @@ function CreateNeed() {
             <span className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
               <span className="text-primary-600 font-bold">4</span>
             </span>
-            Partenaire (optionnel)
+            Partenaire
           </h2>
-          
+
           <div>
             <select
               name="partner_id"
@@ -328,7 +362,7 @@ function CreateNeed() {
               className="input"
             >
               <option value="">Sélectionner un partenaire </option>
-              {partners.map(p => (
+              {partners.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.business_name} - {p.address}
                 </option>
@@ -340,8 +374,18 @@ function CreateNeed() {
         {/* Erreur */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-start">
-            <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span className="text-sm">{error}</span>
           </div>
@@ -351,7 +395,7 @@ function CreateNeed() {
         <div className="flex space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/validator')}
+            onClick={() => navigate("/validator")}
             className="btn-secondary flex-1"
           >
             Annuler
@@ -367,7 +411,7 @@ function CreateNeed() {
                 Création...
               </span>
             ) : (
-              'Créer le besoin'
+              "Créer le besoin"
             )}
           </button>
         </div>

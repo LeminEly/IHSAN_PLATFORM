@@ -7,8 +7,8 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'ihsan-platform',
     allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-    transformation: [{ width: 1000, height: 1000, crop: 'limit' }]
-  }
+    transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
+  },
 });
 
 const fileFilter = (req, file, cb) => {
@@ -23,8 +23,8 @@ export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024
-  }
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
 export const handleUploadError = (err, req, res, next) => {

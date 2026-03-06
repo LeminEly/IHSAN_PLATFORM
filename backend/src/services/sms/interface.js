@@ -27,6 +27,10 @@ export class SMSInterface {
     throw new Error('Method not implemented');
   }
 
+  async notifyAccountSuspended(phone, role, reason) {
+    throw new Error('Method not implemented');
+  }
+
   async sendWelcomeMessage(phone, role) {
     throw new Error('Method not implemented');
   }
