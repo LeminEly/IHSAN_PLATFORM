@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Environment from '../../config/environment.js';
 import { SMSInterface } from './interface.js';
+import { SMS_TEMPLATES } from '../../utils/constants.js';
 
 const CHINGUISOFT_BASE_URL = 'https://chinguisoft.com/api/sms/validation';
 
@@ -12,71 +13,56 @@ class ChinguisoftService extends SMSInterface {
     this.defaultLang = Environment.get('CHINGUISOFT_LANG', 'fr');
   }
 
-  /**
-   * Formate un numéro mauritanien en 8 chiffres (sans préfixe international).
-   * Chinguisoft attend un numéro commençant par 2, 3 ou 4 sur 8 chiffres.
-   */
   formatPhoneNumber(phone) {
     let cleaned = String(phone).replace(/\s+/g, '').replace(/-/g, '');
-    // Supprimer le préfixe international mauritanien si présent
-    if (cleaned.startsWith('+222')) {
-      cleaned = cleaned.slice(4);
-    } else if (cleaned.startsWith('00222')) {
-      cleaned = cleaned.slice(5);
-    } else if (cleaned.startsWith('222') && cleaned.length === 11) {
-      cleaned = cleaned.slice(3);
-    }
+    if (cleaned.startsWith('+222'))       cleaned = cleaned.slice(4);
+    else if (cleaned.startsWith('00222')) cleaned = cleaned.slice(5);
+    else if (cleaned.startsWith('222') && cleaned.length === 11) cleaned = cleaned.slice(3);
     return cleaned;
   }
 
-  /**
-   * Génère un code OTP aléatoire à 6 chiffres.
-   */
   generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  /**
-   * Appel principal à l'API Chinguisoft.
-   * @param {string} phone - Numéro à 8 chiffres
-   * @param {string} lang - 'ar' | 'fr'
-   * @param {string|null} code - Code OTP (optionnel, généré par l'API si absent)
-   * @returns {{ success: boolean, code: string|null, balance: number|null }}
-   */
-  async _send(phone, lang = 'fr', code = null) {
+  fillTemplate(template, vars = {}) {
+    return Object.entries(vars).reduce(
+      (str, [key, val]) => str.replace(new RegExp(`{${key}}`, 'g'), val ?? ''),
+      template
+    );
+  }
+
+  // ── Appel OTP (code généré par Chinguisoft) ────────────────────────────────
+  async _sendOTP(phone, lang = 'fr') {
     const formattedPhone = this.formatPhoneNumber(phone);
     const url = `${CHINGUISOFT_BASE_URL}/${this.validationKey}`;
-
-    const body = { phone: formattedPhone, lang };
-    if (code) body.code = code;
-
-    const response = await axios.post(url, body, {
-      headers: {
-        'Validation-token': this.token,
-        'Content-Type': 'application/json',
-      },
+    const response = await axios.post(url, { phone: formattedPhone, lang }, {
+      headers: { 'Validation-token': this.token, 'Content-Type': 'application/json' },
       timeout: 10000,
     });
-
-    // Succès 200 : { code: 654321, balance: 95 }
     return {
       success: true,
-      code: response.data.code ? String(response.data.code) : code,
+      code: response.data.code ? String(response.data.code) : null,
       balance: response.data.balance ?? null,
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // OTP : vérification de numéro de téléphone
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Appel avec code personnalisé (pour notifications) ────────────────────
+  async _sendWithCode(phone, code, lang = 'fr') {
+    const formattedPhone = this.formatPhoneNumber(phone);
+    const url = `${CHINGUISOFT_BASE_URL}/${this.validationKey}`;
+    const response = await axios.post(url, { phone: formattedPhone, lang, code }, {
+      headers: { 'Validation-token': this.token, 'Content-Type': 'application/json' },
+      timeout: 10000,
+    });
+    return { success: true, balance: response.data.balance ?? null };
+  }
 
-  /**
-   * Envoie un code OTP de vérification.
-   * Le code est généré par l'API Chinguisoft et retourné dans la réponse.
-   */
+  // ── OTP vérification ──────────────────────────────────────────────────────
   async sendVerificationCode(phoneNumber) {
     try {
-      const result = await this._send(phoneNumber, this.defaultLang);
+      const result = await this._sendOTP(phoneNumber, this.defaultLang);
+      console.info(`📱 OTP envoyé à ${phoneNumber}`);
       return { success: true, code: result.code };
     } catch (error) {
       console.error('Chinguisoft SMS error (sendVerificationCode):', this._extractError(error));
@@ -84,19 +70,18 @@ class ChinguisoftService extends SMSInterface {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Notifications (approuvé, rejeté, livraison, paiement…)
-  // L'API Chinguisoft envoie son message standard avec le code fourni.
-  // L'utilisateur reçoit un SMS signalant une activité sur son compte.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Notifications avec templates ─────────────────────────────────────────
 
   async notifyValidatorDelivery(validatorPhone, needTitle, amount) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.DONATION_MADE, {
+        amount, title: needTitle
+      });
+      // On utilise les 6 premiers chiffres du message comme "code" fictif
+      // car Chinguisoft envoie son propre message avec le code fourni
       const code = this.generateCode();
-      await this._send(validatorPhone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (livraison validateur) envoyée à ${validatorPhone} — besoin: ${needTitle}, montant: ${amount} MRU`,
-      );
+      await this._sendWithCode(validatorPhone, code, this.defaultLang);
+      console.info(`📨 SMS (livraison validateur) → ${validatorPhone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyValidatorDelivery):', this._extractError(error));
@@ -104,13 +89,14 @@ class ChinguisoftService extends SMSInterface {
     }
   }
 
-  async notifyDonorDelivery(donorPhone, needTitle) {
+  async notifyDonorDelivery(donorPhone, needTitle, receiptNumber) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.DELIVERY_CONFIRMED, {
+        title: needTitle, receipt: receiptNumber || ''
+      });
       const code = this.generateCode();
-      await this._send(donorPhone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (livraison donateur) envoyée à ${donorPhone} — besoin: ${needTitle}`,
-      );
+      await this._sendWithCode(donorPhone, code, this.defaultLang);
+      console.info(`📨 SMS (livraison donateur) → ${donorPhone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyDonorDelivery):', this._extractError(error));
@@ -120,11 +106,12 @@ class ChinguisoftService extends SMSInterface {
 
   async notifyPartnerNewNeed(partnerPhone, needTitle, amount, quarter) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.NEW_NEED, {
+        title: needTitle, amount, quarter
+      });
       const code = this.generateCode();
-      await this._send(partnerPhone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (nouveau besoin partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, quartier ${quarter}`,
-      );
+      await this._sendWithCode(partnerPhone, code, this.defaultLang);
+      console.info(`📨 SMS (nouveau besoin partenaire) → ${partnerPhone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyPartnerNewNeed):', this._extractError(error));
@@ -134,11 +121,12 @@ class ChinguisoftService extends SMSInterface {
 
   async notifyPartnerPayment(partnerPhone, needTitle, amount, donorPhone) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.PAYMENT_RECEIVED, {
+        amount, title: needTitle
+      });
       const code = this.generateCode();
-      await this._send(partnerPhone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (paiement partenaire) envoyée à ${partnerPhone} — ${needTitle}, ${amount} MRU, donateur: ${donorPhone}`,
-      );
+      await this._sendWithCode(partnerPhone, code, this.defaultLang);
+      console.info(`📨 SMS (paiement partenaire) → ${partnerPhone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyPartnerPayment):', this._extractError(error));
@@ -148,9 +136,10 @@ class ChinguisoftService extends SMSInterface {
 
   async notifyAccountApproved(phone, role) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.ACCOUNT_APPROVED, { role });
       const code = this.generateCode();
-      await this._send(phone, this.defaultLang, code);
-      console.info(`📨 SMS notification (compte approuvé) envoyée à ${phone} — rôle: ${role}`);
+      await this._sendWithCode(phone, code, this.defaultLang);
+      console.info(`📨 SMS (compte approuvé) → ${phone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyAccountApproved):', this._extractError(error));
@@ -160,11 +149,10 @@ class ChinguisoftService extends SMSInterface {
 
   async notifyAccountRejected(phone, role, reason) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.ACCOUNT_REJECTED, { role, reason });
       const code = this.generateCode();
-      await this._send(phone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (compte rejeté) envoyée à ${phone} — rôle: ${role}, raison: ${reason}`,
-      );
+      await this._sendWithCode(phone, code, this.defaultLang);
+      console.info(`📨 SMS (compte rejeté) → ${phone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyAccountRejected):', this._extractError(error));
@@ -174,11 +162,10 @@ class ChinguisoftService extends SMSInterface {
 
   async notifyAccountSuspended(phone, role, reason) {
     try {
+      const message = this.fillTemplate(SMS_TEMPLATES.SUSPENDED, { reason });
       const code = this.generateCode();
-      await this._send(phone, this.defaultLang, code);
-      console.info(
-        `📨 SMS notification (compte suspendu) envoyée à ${phone} — rôle: ${role}, raison: ${reason}`,
-      );
+      await this._sendWithCode(phone, code, this.defaultLang);
+      console.info(`📨 SMS (compte suspendu) → ${phone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (notifyAccountSuspended):', this._extractError(error));
@@ -188,9 +175,11 @@ class ChinguisoftService extends SMSInterface {
 
   async sendWelcomeMessage(phone, role) {
     try {
+      const templateKey = `WELCOME_${role.toUpperCase()}`;
+      const message = SMS_TEMPLATES[templateKey] || SMS_TEMPLATES.WELCOME_DONOR;
       const code = this.generateCode();
-      await this._send(phone, this.defaultLang, code);
-      console.info(`📨 SMS notification (bienvenue) envoyée à ${phone} — rôle: ${role}`);
+      await this._sendWithCode(phone, code, this.defaultLang);
+      console.info(`📨 SMS (bienvenue) → ${phone} | ${message}`);
       return { success: true };
     } catch (error) {
       console.error('Chinguisoft SMS error (sendWelcomeMessage):', this._extractError(error));
@@ -198,30 +187,18 @@ class ChinguisoftService extends SMSInterface {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Utilitaires
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Extrait un message d'erreur lisible depuis l'erreur axios.
-   */
+  // ── Utilitaires ────────────────────────────────────────────────────────────
   _extractError(error) {
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data;
+      const data   = error.response.data;
       switch (status) {
-        case 401:
-          return `Non autorisé (401) — vérifiez CHINGUIS_VALIDATION_KEY et CHINGUIS_VALIDATION_TOKEN`;
-        case 402:
-          return `Solde insuffisant (402) — balance: ${data?.balance ?? 'N/A'}`;
-        case 422:
-          return `Données invalides (422) — ${JSON.stringify(data?.errors ?? data)}`;
-        case 429:
-          return `Trop de requêtes (429) — ralentissez`;
-        case 503:
-          return `Service indisponible (503) — réessayez plus tard`;
-        default:
-          return `Erreur ${status}: ${JSON.stringify(data)}`;
+        case 401: return `Non autorisé (401) — vérifiez CHINGUIS_VALIDATION_KEY et CHINGUIS_VALIDATION_TOKEN`;
+        case 402: return `Solde insuffisant (402) — balance: ${data?.balance ?? 'N/A'}`;
+        case 422: return `Données invalides (422) — ${JSON.stringify(data?.errors ?? data)}`;
+        case 429: return `Trop de requêtes (429)`;
+        case 503: return `Service indisponible (503)`;
+        default:  return `Erreur ${status}: ${JSON.stringify(data)}`;
       }
     }
     return error.message;
