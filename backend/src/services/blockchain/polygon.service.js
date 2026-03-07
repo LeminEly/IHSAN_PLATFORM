@@ -66,8 +66,7 @@ class PolygonService {
 
   async storeTransaction(data) {
     const hash = this.generateHash(data);
-    const frontendUrl = Environment.get('FRONTEND_URL') || 'http://localhost:3000';
-
+    const frontendUrl = Environment.get('CLIENT_URL') || Environment.get('FRONTEND_URL') || 'http://localhost:3000';
     if (this.enabled) {
       try {
         await this.initialize();
