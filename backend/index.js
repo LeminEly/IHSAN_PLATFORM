@@ -3,14 +3,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
 dotenv.config();
-
 import Environment from './src/config/environment.js';
 import { testConnection } from './src/config/database.js';
-
 import './src/models/Relations.js';
-
 import authRoutes from './src/routes/v1/auth.js';
 import adminRoutes from './src/routes/v1/admin.js';
 import validatorRoutes from './src/routes/v1/validator.js';
@@ -23,21 +19,27 @@ Environment.validate();
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+  Environment.get('CLIENT_URL'),
+  'https://ihsan-platform-supnum.netlify.app',
+  'http://localhost:3000'
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
-  origin: [
-    
-    Environment.get('CLIENT_URL'),
-    'https://ihsan-platform-hdw3.vercel.app',
-    'http://localhost:3000'
-  ],    
+    origin: allowedOrigins,
     credentials: true
   }
 });
 
 // Middlewares
 app.use(cors({
-  origin: Environment.get('CLIENT_URL', 'http://localhost:3000'),
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (ex: mobile, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS bloqué pour: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -82,13 +84,12 @@ io.on('connection', (socket) => {
 
 // Démarrage 
 const PORT = Environment.get('PORT', 5000);
-
 const start = async () => {
   await testConnection();
   server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 API: http://localhost:${PORT}/api/v1`);
+    console.log(`✅ CORS autorisé pour: ${allowedOrigins.join(', ')}`);
   });
 };
-
 start();
